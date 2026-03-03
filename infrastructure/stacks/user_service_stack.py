@@ -1,4 +1,6 @@
-from aws_cdk import App, Stack
+from aws_cdk import Stack
+from config.dev import DevConfig
+from config.prod import ProdConfig
 from constructs import Construct
 from constructs.dynamodb_table import DynamoDBTable
 from constructs.lambda_function import LambdaFunction
@@ -6,15 +8,16 @@ from constructs.rest_api_gateway import RestApiGateway
 
 
 class UserServiceStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, config: DevConfig | ProdConfig, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # 1. Create the DynamoDB Table
         # Standardizing on 'userId' as the Partition Key
         # todo create a config file
+        table_name = f"{config.APP_NAME}-users"
         user_table = DynamoDBTable(
-            self, "UserTable",
-            table_name='users',
+            self, table_name,
+            table_name=table_name,
             partition_key_name="userId"
         )
 
@@ -49,8 +52,3 @@ class UserServiceStack(Stack):
             method="GET",
             handler=get_user_lambda.function
         )
-
-# App entry point
-app = App()
-UserServiceStack(app, "UserServiceProd")
-app.synth()
