@@ -1,0 +1,41 @@
+[project]
+name = "infrastructure"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+
+[project.scripts]
+lint = "ruff check ."
+format = "ruff format ."
+typecheck = "pyright ."
+
+dependencies = [
+    "aws-cdk-lib>=2.241.0",
+    "constructs>=10.5.1",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.408",
+    "ruff>=0.15.4",
+]
+
+[tool.ruff]
+# Set the line length to 88 (Black standard) or 100
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Enable: Pyflakes (F), Pycodestyle (E, W), isort (I), and others
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"] # Ignore line length violations (handled by formatter)
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-single-line = false
+
+[tool.pyright]
+include = ["app.py", "infrastructure", "config"]
+typeCheckingMode = "basic" # Or "strict" if you're feeling brave
+pythonVersion = "3.12"
