@@ -49,3 +49,7 @@ class RestApiGateway(Construct):
         resource = self.api.root.resource_for_path(path)
         resource.add_method(method, apigw.LambdaIntegration(handler))
         return resource
+    
+    def add_service_resource(self, path_part: str):
+        """Returns a new top-level resource like /users or /blogs"""
+        return self.api.root.add_resource(path_part)
