@@ -1,14 +1,10 @@
-from typing import Dict, Optional
 
 from aws_cdk import (
     Duration,
-)
-from aws_cdk import (
     aws_lambda as _lambda,
-)
-from aws_cdk import (
     aws_logs as logs,
 )
+
 from constructs import Construct
 
 
@@ -20,7 +16,7 @@ class LambdaFunction(Construct):
         function_name: str,
         entry_path: str,
         handler: str = "index.handler",
-        environment: Optional[Dict[str, str]] = None,
+        environment: dict[str, str] | None = None,
         timeout_seconds: int = 30,
         memory_size: int = 128,
         **kwargs,

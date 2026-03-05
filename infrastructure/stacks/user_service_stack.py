@@ -1,5 +1,5 @@
-from aws_cdk import Stack
-from aws_cdk import aws_apigateway as apigw
+from aws_cdk import Stack, aws_apigateway as apigw
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs import Construct

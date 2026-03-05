@@ -1,12 +1,9 @@
 from aws_cdk import (
     Duration,
-)
-from aws_cdk import (
     aws_apigateway as apigw,
-)
-from aws_cdk import (
     aws_lambda as _lambda,
 )
+
 from constructs import Construct
 
 

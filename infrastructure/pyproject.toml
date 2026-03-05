@@ -36,6 +36,12 @@ combine-as-imports = true
 force-single-line = false
 
 [tool.pyright]
-include = ["app.py", "infrastructure", "config"]
+include = ["app.py", "constructs", "config", "stacks"]
+exclude = [
+    "tests",
+    ".venv",
+    "**/__pycache__",
+    "cdk.out", "**/node_modules", "**/.*",
+]
 typeCheckingMode = "basic" # Or "strict" if you're feeling brave
 pythonVersion = "3.12"
