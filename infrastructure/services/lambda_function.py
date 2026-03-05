@@ -3,7 +3,6 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_logs as logs,
 )
-
 from constructs import Construct
 
 
@@ -28,7 +27,7 @@ class LambdaFunction(Construct):
             function_name=function_name,
             runtime=_lambda.Runtime.PYTHON_3_12,  # Standardized runtime
             handler=handler,
-            code=_lambda.Code.from_asset(entry_path),
+            code=_lambda.Code.from_asset(path=entry_path),
             timeout=Duration.seconds(timeout_seconds),
             memory_size=memory_size,
             environment=environment or {},

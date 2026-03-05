@@ -3,7 +3,6 @@ from aws_cdk import (
     aws_apigateway as apigw,
     aws_lambda as _lambda,
 )
-
 from constructs import Construct
 
 
@@ -20,7 +19,7 @@ class RestApiGateway(Construct):
         super().__init__(scope, id)
 
         # If no origins provided, we default to none (strictest)
-        origins = allowed_origins or []
+        origins = allowed_origins or ["*"]
 
         self.api = apigw.RestApi(
             self,

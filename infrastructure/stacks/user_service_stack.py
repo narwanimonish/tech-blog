@@ -25,7 +25,7 @@ class UserServiceStack(Stack):
         )
 
         # 2. Define the Methods (The "Micro-Lambda" way)
-        methods = ["GET", "POST", "PUT", "DELETE"]
+        methods = ["GET"]
 
         # 3. Create the /users resource on the SHARED API
         user_resource = api_gw.root.add_resource("user")
@@ -36,8 +36,8 @@ class UserServiceStack(Stack):
                 self,
                 id=function_name,
                 function_name=function_name,
-                entry_path="lambda/users",
-                handler=f"{method.lower()}.handler",
+                entry_path="backend/lambda/users/handlers",
+                handler=f"{method.lower()}_users.lambda_handler",
                 environment={"TABLE_NAME": users_table.table.table_name},
             )
 

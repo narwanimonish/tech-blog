@@ -1,9 +1,8 @@
-from abc import ABC
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class BaseConfig(ABC):
-    ENV: str
+class BaseConfig:
 
     APP_NAME: str = "tech-blog"
+    ENV: str = "dev"
