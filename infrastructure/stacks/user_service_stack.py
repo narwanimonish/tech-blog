@@ -1,10 +1,10 @@
 from aws_cdk import Stack, aws_apigateway as apigw
+from constructs import Construct
 
 from config.dev import DevConfig
 from config.prod import ProdConfig
-from constructs import Construct
-from constructs.dynamodb_table import DynamoDBTable
-from constructs.lambda_function import LambdaFunction
+from services.dynamodb_table import DynamoDBTable
+from services.lambda_function import LambdaFunction
 
 
 class UserServiceStack(Stack):

@@ -4,16 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
+dependencies = [
+    "aws-cdk-lib>=2.241.0",
+    "constructs>=10.5.1",
+]
 
 [project.scripts]
 lint = "ruff check ."
 format = "ruff format ."
 typecheck = "pyright ."
-
-dependencies = [
-    "aws-cdk-lib>=2.241.0",
-    "constructs>=10.5.1",
-]
 
 [dependency-groups]
 dev = [

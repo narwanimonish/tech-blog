@@ -1,9 +1,9 @@
 from aws_cdk import Stack
+from constructs import Construct
 
 from config.dev import DevConfig
 from config.prod import ProdConfig
-from constructs import Construct
-from constructs.rest_api_gateway import RestApiGateway
+from services.rest_api_gateway import RestApiGateway
 
 
 class ApiGatewayStack(Stack):
