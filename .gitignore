@@ -9,3 +9,6 @@
 
 # Top-level Environment Variables
 .env
+
+# Backend build output (Lambda Layer bundle)
+backend/layer_bundle/

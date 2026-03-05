@@ -5,6 +5,7 @@ from stacks.user_service_stack import UserServiceStack
 
 app = cdk.App()
 
+# Stack uses default AWS account/region from your environment (aws configure or env vars).
 UserServiceStack(app, "UserServiceStack", config=env_config)
 
 app.synth()

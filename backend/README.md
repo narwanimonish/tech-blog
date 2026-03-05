@@ -11,14 +11,15 @@ backend/
 ├── README.md                 # This file – structure and modules
 ├── SETUP.md                  # Setup, run, deploy
 ├── config.json               # Lambda config (timeout, memory, concurrency)
-├── build.py                  # Build script – bundles common + core into each Lambda package
+├── build.py                  # Build script – creates layer_bundle for Lambda Layer
 ├── db/
 │   └── migration/
 ├── scripts/
 │   └── data/
-├── common/                   # emsflow-common
-├── core/                     # core-posts + core-users
-└── webservice/               # Lambda handlers (API layer)
+├── common/                   # Shared utilities (DynamoDB, API response)
+├── core/                     # Domain services (posts, users)
+├── layer_bundle/             # Build output: python/common, python/core (for Lambda Layer)
+└── webservice/               # Lambda handlers only (runtime/); common + core via Layer
 ```
 
 ---
@@ -44,14 +45,13 @@ Each module follows this pattern (where applicable):
 └── (optional) src/main/       # If needed later
 ```
 
-**webservice** (one deployable package per Lambda):
+**webservice** (one folder per Lambda; each contains only the handler):
 
 ```
 webservice/
 ├── posts_get/
-│   ├── runtime/
-│   │   └── posts_get.py       # Handler; after build: common/, core/ copied here
-│   └── (build adds: common/, core/)
+│   └── runtime/
+│       └── posts_get.py       # Handler only; common + core come from Lambda Layer
 ├── posts_list/
 ├── posts_post/
 ├── posts_put/
@@ -91,20 +91,22 @@ webservice/
 | Posts service  | `core/posts/service.py` |
 | Users service  | `core/users/service.py` |
 | Handlers       | `webservice/<name>/runtime/<name>.py` |
-| Build script   | `build.py` – bundles common + core into each `webservice/<name>/` for deployment |
+| Layer bundle   | `build.py` → `layer_bundle/python/{common,core}` (Lambda Layer; no copy per handler) |
 
 ---
 
 ## Build
 
-From repo root (or `backend/`):
+Common and core live **once** in a Lambda Layer; they are not copied into each webservice folder.
+
+From `backend/`:
 
 ```bash
-# 1. Bundle common + core into each Lambda package (required before deploy)
+# 1. Build the layer (creates layer_bundle/python/{common,core})
 python build.py
 
-# 2. Deploy (from infrastructure/)
+# 2. Deploy (from infrastructure/) – layer is attached to every Lambda
 cd ../infrastructure && cdk deploy
 ```
 
-Run a specific Lambda locally (e.g. with a test event): use the built package under `webservice/<name>/` and set `PYTHONPATH` to that directory so that `runtime/<name>.lambda_handler` can import `common` and `core`.
+Each Lambda’s asset is only `webservice/<name>/` (just `runtime/`). The layer supplies `common` and `core` at runtime. For local runs, set `PYTHONPATH` to include `backend/common` and `backend/core` (or the `layer_bundle/python` directory).

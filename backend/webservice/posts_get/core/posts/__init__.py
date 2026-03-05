@@ -1,1 +1,0 @@
-# core.posts – posts service
