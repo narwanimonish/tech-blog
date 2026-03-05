@@ -1,0 +1,47 @@
+{
+    "users_list": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "users_get": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "users_put": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "users_delete": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "posts_list": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "posts_get": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "posts_post": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "posts_put": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    },
+    "posts_delete": {
+        "reserved_concurrency": 2,
+        "timeout": 60,
+        "memory_size": 512
+    }
+}
