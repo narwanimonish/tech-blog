@@ -1,4 +1,3 @@
-
 from aws_cdk import (
     Duration,
     aws_lambda as _lambda,
