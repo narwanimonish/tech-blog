@@ -1,0 +1,115 @@
+# Deploy Tech Blog (four stacks)
+
+Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (not the built-in Cognito authorizer) that validates the Cognito Access Token via `GetUser`.
+
+## Stacks (deploy in order)
+
+| Stack | Contents |
+|-------|----------|
+| **TechBlogDataStack** | DynamoDB tables (users, posts). Deploy first. |
+| **TechBlogAuthStack** | Cognito User Pool + App Client. |
+| **TechBlogLambdaStack** | Shared layer + 9 handler Lambdas. IAM grants to DynamoDB, env vars for table names. Depends on Data. |
+| **TechBlogApiStack** | API Gateway, custom Lambda authorizer, all routes. Depends on Lambda. |
+
+## Prerequisites
+
+- AWS CLI configured (`aws configure`)
+- Python 3.12+
+- CDK bootstrapped (`cdk bootstrap`)
+
+## 1. Build backend layer
+
+From repo root:
+
+```bash
+cd backend
+python build.py
+```
+
+Creates `backend/layer_bundle/python/{common,core}` for the Lambda layer.
+
+## 2. Install CDK dependencies
+
+```bash
+cd infrastructure
+pip install -r requirements.txt
+```
+
+## 3. Deploy (all stacks in order)
+
+```bash
+cd infrastructure
+cdk deploy --all
+```
+
+Or one by one:
+
+```bash
+cdk deploy TechBlogDataStack
+cdk deploy TechBlogAuthStack
+cdk deploy TechBlogLambdaStack
+cdk deploy TechBlogApiStack
+```
+
+CDK will respect dependencies (Data → Lambda → Api). Approve IAM changes when prompted.
+
+## 4. Stack outputs
+
+- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack).
+- **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`.
+- **TechBlogApiStack**: `ApiUrl` (API Gateway base URL).
+
+## 5. Using the API (custom Lambda authorizer)
+
+All routes require a valid **Cognito Access Token** in the `Authorization` header (the custom authorizer validates it with Cognito `GetUser`):
+
+```http
+Authorization: Bearer <ACCESS_TOKEN>
+```
+
+Use the **Access Token** from Cognito (e.g. from Amplify `Auth.currentSession()` → `getIdToken()` or access token from your auth flow). The authorizer calls `cognito-idp:GetUser` to validate it.
+
+### Create a user (Cognito)
+
+AWS Console → Cognito → your User Pool → Create user, or use Amplify/sign-up API.
+
+### Call the API
+
+```bash
+export API_URL="https://xxxx.execute-api.us-east-1.amazonaws.com/dev"
+export TOKEN="<your-cognito-access-token>"
+
+curl -H "Authorization: Bearer $TOKEN" "$API_URL/posts"
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"title":"Hello","body":"World"}' "$API_URL/posts"
+```
+
+### Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /users | List users |
+| GET | /users/{userId} | Get user |
+| PUT | /users/{userId} | Create/update user |
+| DELETE | /users/{userId} | Delete user |
+| GET | /posts | List posts |
+| POST | /posts | Create post |
+| GET | /posts/{postId} | Get post |
+| PUT | /posts/{postId} | Create/update post |
+| DELETE | /posts/{postId} | Delete post |
+
+## 6. IAM and env vars
+
+- **TechBlogLambdaStack**: Each handler Lambda has `grant_read_write_data` on the relevant DynamoDB table(s). Env vars: `usersStoreTable`, `postsTable` (table names from Data stack).
+- **TechBlogApiStack**: Authorizer Lambda has `cognito-idp:GetUser` and is invokable by API Gateway. Env: `USER_POOL_REGION`.
+
+## 7. Frontend
+
+- Use **User Pool ID** and **App Client ID** (from TechBlogAuthStack) with Amplify or Cognito SDK to sign in.
+- Send the **Access Token** (or ID token if you switch authorizer to validate JWT) in `Authorization: Bearer <token>` to **ApiUrl**.
+
+To add production callback URLs for Cognito, edit `constructs/cognito_auth.py` (`callback_urls`, `logout_urls`).
+
+## 8. Environment
+
+- **APP_ENV**: `dev` (default) or `prod`. Table and API names are prefixed with `config.APP_NAME` (`tech-blog`).

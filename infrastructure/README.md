@@ -1,3 +1,6 @@
+# Tech Blog – CDK Infrastructure
+
+Four stacks: **TechBlogDataStack** (DynamoDB), **TechBlogAuthStack** (Cognito), **TechBlogLambdaStack** (Lambdas + IAM + env), **TechBlogApiStack** (API Gateway + custom Lambda authorizer). See **[DEPLOY.md](DEPLOY.md)** for deploy order and API usage.
 
 # Welcome to your CDK Python project!
 
@@ -51,7 +54,7 @@ command.
 
  * `cdk ls`          list all stacks in the app
  * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
+ * `cdk deploy --all` deploy all stacks (run `python build.py` from backend/ first)
  * `cdk diff`        compare deployed stack with current state
  * `cdk docs`        open CDK documentation
 

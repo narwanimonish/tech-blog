@@ -1,20 +1,16 @@
-from aws_cdk import (
-    Duration,
-)
-from aws_cdk import (
-    aws_apigateway as apigw,
-)
-from aws_cdk import (
-    aws_lambda as _lambda,
-)
+from typing import Optional
+
+from aws_cdk import Duration
+from aws_cdk import aws_apigateway as apigw
+from aws_cdk import aws_lambda as _lambda
 from constructs import Construct
 
 
 class RestApiGateway(Construct):
     def __init__(
-        self, 
-        scope: Construct, 
-        id: str, 
+        self,
+        scope: Construct,
+        id: str,
         api_name: str,
         allowed_origins: list[str] | None = None,
         deploy_options: apigw.StageOptions | None = None,
@@ -22,7 +18,6 @@ class RestApiGateway(Construct):
     ):
         super().__init__(scope, id)
 
-        # If no origins provided, we default to none (strictest) 
         origins = allowed_origins or []
 
         self.api = apigw.RestApi(
@@ -33,19 +28,34 @@ class RestApiGateway(Construct):
                 allow_origins=origins,
                 allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 allow_headers=[
-                    "Content-Type", 
-                    "X-Amz-Date", 
-                    "Authorization", 
-                    "X-Api-Key", 
-                    "X-Amz-Security-Token"
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token",
                 ],
-                # Keeps the browser from re-checking CORS for 10 minutes
-                max_age=Duration.minutes(10) 
+                max_age=Duration.minutes(10),
             ),
             **kwargs
         )
 
-    def add_lambda_resource(self, path: str, method: str, handler: _lambda.IFunction):
+    def add_lambda_resource(
+        self,
+        path: str,
+        method: str,
+        handler: _lambda.IFunction,
+        authorizer: Optional[apigw.IAuthorizer] = None,
+    ):
+        """Add a route; path can include params e.g. 'posts/{postId}'."""
         resource = self.api.root.resource_for_path(path)
-        resource.add_method(method, apigw.LambdaIntegration(handler))
+        integration = apigw.LambdaIntegration(handler)
+        if authorizer:
+            resource.add_method(
+                method,
+                integration,
+                authorizer=authorizer,
+                authorization_type=apigw.AuthorizationType.CUSTOM,
+            )
+        else:
+            resource.add_method(method, integration)
         return resource
