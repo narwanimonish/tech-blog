@@ -36,7 +36,7 @@ class UserServiceStack(Stack):
                 self,
                 id=function_name,
                 function_name=function_name,
-                entry_path="backend/lambda/users/handlers",
+                entry_path="./../backend/lambda/users/handlers",
                 handler=f"{method.lower()}_users.lambda_handler",
                 environment={"TABLE_NAME": users_table.table.table_name},
             )

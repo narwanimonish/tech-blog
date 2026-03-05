@@ -10,6 +10,6 @@ app = cdk.App()
 api_gw = ApiGatewayStack(app, f"{env_config.APP_NAME}-api-gateway", config=env_config)
 
 user_service_stack = UserServiceStack(app, f"{env_config.APP_NAME}-user-service-stack", config=env_config, api_gw=api_gw.api)
-user_service_stack.add_dependency(api_gw)
+# user_service_stack.add_dependency(api_gw)
 
 app.synth()
