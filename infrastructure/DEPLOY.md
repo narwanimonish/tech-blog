@@ -7,7 +7,7 @@ Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (
 | Stack | Contents |
 |-------|----------|
 | **TechBlogDataStack** | DynamoDB tables (users, posts). Deploy first. |
-| **TechBlogAuthStack** | Cognito User Pool + App Client. |
+| **TechBlogAuthStack** | Cognito User Pool + App Client + Hosted UI domain + Post-confirmation Lambda (populates users table). Depends on Data. |
 | **TechBlogLambdaStack** | Shared layer + 9 handler Lambdas. IAM grants to DynamoDB, env vars for table names. Depends on Data. |
 | **TechBlogApiStack** | API Gateway, custom Lambda authorizer, all routes. Depends on Lambda. |
 
@@ -51,12 +51,12 @@ cdk deploy TechBlogLambdaStack
 cdk deploy TechBlogApiStack
 ```
 
-CDK will respect dependencies (Data → Lambda → Api). Approve IAM changes when prompted.
+CDK will respect dependencies (Data → Auth → Lambda → Api). Approve IAM changes when prompted.
 
 ## 4. Stack outputs
 
 - **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack).
-- **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`.
+- **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`, `CognitoDomainUrl` (Hosted UI base URL; “View login page” in console uses this).
 - **TechBlogApiStack**: `ApiUrl` (API Gateway base URL).
 
 ## 5. Using the API (custom Lambda authorizer)
