@@ -17,6 +17,31 @@ Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (
 - Python 3.12+
 - CDK bootstrapped (`cdk bootstrap`)
 
+### "Unable to resolve AWS account to use"
+
+If CDK fails with this error, either:
+
+**Option A – Use default credentials (recommended)**  
+Configure AWS and verify the CLI sees your account:
+
+```bash
+aws configure
+aws sts get-caller-identity
+```
+
+Use the same terminal (or ensure your shell loads `~/.aws/credentials`) when running `cdk deploy`.
+
+**Option B – Set account and region explicitly**  
+If you use a profile or credentials that CDK doesn’t pick up, set:
+
+```bash
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+export AWS_REGION=us-east-1   # or your region
+cdk deploy --all
+```
+
+Or pass them inline: `AWS_ACCOUNT_ID=123456789012 AWS_REGION=us-east-1 cdk deploy --all`
+
 ## 1. Build backend layer
 
 From repo root:
