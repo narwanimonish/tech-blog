@@ -1,6 +1,7 @@
 """
 Cognito User Pool and App Client for API authentication.
 Frontend uses the App Client to sign in; API Gateway validates the JWT via authorizer.
+Hosted UI domain is configured so "View login page" works in the console.
 """
 from aws_cdk import RemovalPolicy
 from aws_cdk import aws_cognito as cognito
@@ -15,6 +16,8 @@ class CognitoAuth(Construct):
         scope: Construct,
         construct_id: str,
         app_name: str = "tech-blog",
+        *,
+        domain_prefix: str | None = None,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
@@ -61,6 +64,13 @@ class CognitoAuth(Construct):
             supported_identity_providers=[
                 cognito.UserPoolClientIdentityProvider.COGNITO,
             ],
+        )
+
+        # Hosted UI domain – required for "View login page" in the console and OAuth redirects
+        prefix = domain_prefix or f"{app_name}-auth"
+        self.domain = self.user_pool.add_domain(
+            "CognitoDomain",
+            cognito_domain=cognito.CognitoDomainOptions(domain_prefix=prefix),
         )
 
     def get_user_pool(self) -> cognito.IUserPool:

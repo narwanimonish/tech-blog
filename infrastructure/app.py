@@ -11,8 +11,9 @@ app = cdk.App()
 # 1. DynamoDB tables only
 data_stack = TechBlogDataStack(app, "TechBlogDataStack", config=env_config)
 
-# 2. Cognito User Pool + App Client
-auth_stack = TechBlogAuthStack(app, "TechBlogAuthStack", config=env_config)
+# 2. Cognito User Pool + App Client + Post-confirmation trigger (depends on Data for users table)
+auth_stack = TechBlogAuthStack(app, "TechBlogAuthStack", config=env_config, data_stack=data_stack)
+auth_stack.add_dependency(data_stack)
 
 # 3. Lambdas (layer, authorizer, handlers) – depends on Data
 lambda_stack = TechBlogLambdaStack(
