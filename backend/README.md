@@ -110,3 +110,218 @@ cd ../infrastructure && cdk deploy
 ```
 
 Each Lambda’s asset is only `webservice/<name>/` (just `runtime/`). The layer supplies `common` and `core` at runtime. For local runs, set `PYTHONPATH` to include `backend/common` and `backend/core` (or the `layer_bundle/python` directory).
+
+---
+
+## Postman API Guide
+
+Use this section to call every API from Postman.
+
+### Postman environment variables
+
+Create a Postman environment and add:
+
+- `baseUrl` = `https://<api-id>.execute-api.<region>.amazonaws.com/dev`
+- `accessToken` = (set after calling `/auth/login`)
+- `userId` = (optional, for `/users/{userId}`)
+- `postId` = (optional, for `/posts/{postId}`)
+
+### Authorization setup
+
+- For protected APIs, use **Authorization** tab:
+  - Type: `Bearer Token`
+  - Token: `{{accessToken}}`
+- `POST /auth/login` is public (no bearer token required).
+
+### 1) Login
+
+#### `POST {{baseUrl}}/auth/login`
+
+**Body** (raw JSON):
+
+```json
+{
+  "username": "utkarsh.tehlan+1@cloudwick.com",
+  "password": "YourPassword123!"
+}
+```
+
+**200 Response**:
+
+```json
+{
+  "accessToken": "eyJ...",
+  "idToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "expiresIn": 3600,
+  "tokenType": "Bearer"
+}
+```
+
+Set `accessToken` environment variable from `accessToken` in this response.
+
+### 2) Users APIs (Bearer required)
+
+#### `GET {{baseUrl}}/users`
+
+**200 Response**:
+
+```json
+{
+  "items": [
+    {
+      "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344",
+      "email": "utkarsh.tehlan+1@cloudwick.com",
+      "name": "Utkarsh"
+    }
+  ]
+}
+```
+
+#### `GET {{baseUrl}}/users/{{userId}}`
+
+**200 Response**:
+
+```json
+{
+  "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344",
+  "email": "utkarsh.tehlan+1@cloudwick.com",
+  "name": "Utkarsh"
+}
+```
+
+**404 Response**:
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+#### `PUT {{baseUrl}}/users/{{userId}}`
+
+**Body** (raw JSON):
+
+```json
+{
+  "email": "utkarsh.tehlan+1@cloudwick.com",
+  "name": "Utkarsh Updated"
+}
+```
+
+**200 Response**:
+
+```json
+{
+  "email": "utkarsh.tehlan+1@cloudwick.com",
+  "name": "Utkarsh Updated",
+  "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344"
+}
+```
+
+#### `DELETE {{baseUrl}}/users/{{userId}}`
+
+**200 Response**:
+
+```json
+{
+  "message": "Deleted"
+}
+```
+
+### 3) Posts APIs (Bearer required)
+
+#### `GET {{baseUrl}}/posts`
+
+**200 Response**:
+
+```json
+{
+  "items": [
+    {
+      "postId": "f9f6c9bc-19f4-4efe-9b94-6fe1a4e1f95a",
+      "title": "My first post",
+      "body": "Hello world"
+    }
+  ]
+}
+```
+
+#### `POST {{baseUrl}}/posts`
+
+**Body** (raw JSON):
+
+```json
+{
+  "title": "My first post",
+  "body": "Hello world"
+}
+```
+
+**200 Response**:
+
+```json
+{
+  "title": "My first post",
+  "body": "Hello world",
+  "postId": "f9f6c9bc-19f4-4efe-9b94-6fe1a4e1f95a"
+}
+```
+
+#### `GET {{baseUrl}}/posts/{{postId}}`
+
+**200 Response**:
+
+```json
+{
+  "postId": "f9f6c9bc-19f4-4efe-9b94-6fe1a4e1f95a",
+  "title": "My first post",
+  "body": "Hello world"
+}
+```
+
+**404 Response**:
+
+```json
+{
+  "message": "Post not found"
+}
+```
+
+#### `PUT {{baseUrl}}/posts/{{postId}}`
+
+**Body** (raw JSON):
+
+```json
+{
+  "title": "Updated title",
+  "body": "Updated body"
+}
+```
+
+**200 Response**:
+
+```json
+{
+  "title": "Updated title",
+  "body": "Updated body",
+  "postId": "f9f6c9bc-19f4-4efe-9b94-6fe1a4e1f95a"
+}
+```
+
+#### `DELETE {{baseUrl}}/posts/{{postId}}`
+
+**200 Response**:
+
+```json
+{
+  "message": "Deleted"
+}
+```
+
+### Common error responses
+
+- `400`: invalid request body/path parameters
+- `401`: missing/invalid bearer token (or bad login credentials in `/auth/login`)
+- `403`: user not confirmed (login flow)
+- `500`: internal server error
