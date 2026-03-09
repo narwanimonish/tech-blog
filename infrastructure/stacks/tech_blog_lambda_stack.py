@@ -166,6 +166,7 @@ class TechBlogLambdaStack(Stack):
             environment={
                 "USER_POOL_REGION": self.region,
                 "USER_POOL_CLIENT_ID": auth_stack.user_pool_client.user_pool_client_id,
+                "usersStoreTable": users_table.table.table_name,
             },
         )
 
@@ -179,10 +180,11 @@ class TechBlogLambdaStack(Stack):
         posts_table.table.grant_read_write_data(self.posts_post.function)
         posts_table.table.grant_read_write_data(self.posts_put.function)
         posts_table.table.grant_read_write_data(self.posts_delete.function)
+        users_table.table.grant_read_write_data(self.auth_login.function)
         self.auth_login.function.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["cognito-idp:InitiateAuth"],
+                actions=["cognito-idp:InitiateAuth", "cognito-idp:GetUser"],
                 resources=["*"],
             )
         )

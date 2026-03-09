@@ -11,13 +11,17 @@ import os
 import boto3
 
 from common import simple_api_util
+from core.users.service import UsersService
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
 
 REGION = os.environ.get("USER_POOL_REGION", os.environ.get("AWS_REGION", "us-east-1"))
 CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID", "")
+USERS_TABLE_NAME = os.environ.get("usersStoreTable", "")
 COGNITO = boto3.client("cognito-idp", region_name=REGION)
+TABLE = boto3.resource("dynamodb").Table(USERS_TABLE_NAME) if USERS_TABLE_NAME else None
+SERVICE = UsersService(TABLE) if TABLE else None
 
 
 def lambda_handler(event, context):
@@ -67,6 +71,7 @@ def lambda_handler(event, context):
 
         # Intentional full token logging per request.
         LOGGER.info("auth_login token payload request_id=%s username=%s tokens=%s", request_id, username, json.dumps(auth))
+        _upsert_user_from_access_token(auth.get("AccessToken"), request_id)
         LOGGER.info("auth_login success request_id=%s username=%s", request_id, username)
         return simple_api_util.build_response(
             200,
@@ -87,3 +92,31 @@ def lambda_handler(event, context):
     except Exception as e:
         LOGGER.exception("auth_login unexpected error request_id=%s error=%s", request_id, e)
         return simple_api_util.build_response(500, {"message": "Internal server error"})
+
+
+def _upsert_user_from_access_token(access_token, request_id):
+    if not access_token:
+        LOGGER.warning("auth_login skip user upsert: no access token request_id=%s", request_id)
+        return
+    if not SERVICE:
+        LOGGER.warning("auth_login skip user upsert: usersStoreTable missing request_id=%s", request_id)
+        return
+
+    try:
+        LOGGER.info("auth_login fetching user profile from Cognito request_id=%s", request_id)
+        resp = COGNITO.get_user(AccessToken=access_token)
+        attrs = {a.get("Name"): a.get("Value") for a in resp.get("UserAttributes", [])}
+        user_id = attrs.get("sub")
+        if not user_id:
+            LOGGER.warning("auth_login skip user upsert: missing sub request_id=%s", request_id)
+            return
+
+        data = {"email": attrs.get("email", "")}
+        name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username")
+        if name:
+            data["name"] = name
+
+        SERVICE.put_user(user_id, data)
+        LOGGER.info("auth_login upserted user in DynamoDB request_id=%s userId=%s", request_id, user_id)
+    except Exception as e:
+        LOGGER.exception("auth_login failed to upsert user request_id=%s error=%s", request_id, e)
