@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 
+import boto3
 import aws_cdk as cdk
 from config import env_config
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -10,10 +11,27 @@ from stacks.tech_blog_api_stack import TechBlogApiStack
 
 app = cdk.App()
 
-# Resolve AWS account/region: from env vars, or CDK will use default credentials (aws configure)
-_account = os.environ.get("CDK_DEFAULT_ACCOUNT") or os.environ.get("AWS_ACCOUNT_ID")
-_region = os.environ.get("CDK_DEFAULT_REGION") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
-cdk_env = cdk.Environment(account=_account, region=_region) if (_account and _region) else None
+
+def _resolve_env():
+    """Resolve account/region from env vars, else from default AWS credentials (boto3)."""
+    account = os.environ.get("CDK_DEFAULT_ACCOUNT") or os.environ.get("AWS_ACCOUNT_ID")
+    region = os.environ.get("CDK_DEFAULT_REGION") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    if account and region:
+        return cdk.Environment(account=account, region=region)
+    try:
+        session = boto3.Session()
+        sts = session.client("sts")
+        identity = sts.get_caller_identity()
+        account = identity["Account"]
+        region = session.region_name or os.environ.get("AWS_REGION") or "us-east-1"
+        return cdk.Environment(account=account, region=region)
+    except Exception as e:
+        raise RuntimeError(
+            "Unable to resolve AWS account/region. Run 'aws configure' or set AWS_ACCOUNT_ID and AWS_REGION."
+        ) from e
+
+
+cdk_env = _resolve_env()
 
 # 1. DynamoDB tables only
 data_stack = TechBlogDataStack(app, "TechBlogDataStack", config=env_config, env=cdk_env)
