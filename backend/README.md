@@ -49,17 +49,16 @@ Each module follows this pattern (where applicable):
 
 ```
 webservice/
-├── posts_get/
+├── posts/
 │   └── runtime/
-│       └── posts_get.py       # Handler only; common + core come from Lambda Layer
-├── posts_list/
-├── posts_post/
-├── posts_put/
-├── posts_delete/
-├── users_get/
-├── users_list/
-├── users_put/
-└── users_delete/
+│       └── posts.py           # Unified posts handler (GET/POST/GET by id/PUT/DELETE)
+├── users/
+│   └── runtime/
+│       └── users.py           # Unified users handler (GET list/GET by id/PUT/DELETE)
+├── authorizer/
+├── cognito_login/
+├── cognito_post_authentication/
+└── cognito_post_confirmation/
 ```
 
 ---
@@ -75,8 +74,9 @@ webservice/
 - `core.users` — `service` (UsersService)
 
 ### webservice
-- One Lambda per resource/action: `posts_get`, `posts_list`, `posts_post`, `posts_put`, `posts_delete`, `users_get`, `users_list`, `users_put`, `users_delete`
-- Each has a **handler** in `runtime/<name>.py` that parses the event, validates input, calls the appropriate **core** service, and returns an API response via **common**.
+- Unified lambdas: `posts` and `users` handle all methods/routes for their resource.
+- Auth-related lambdas: `authorizer`, `cognito_login`, `cognito_post_authentication`, `cognito_post_confirmation`.
+- Each has a **handler** in `runtime/<name>.py` that parses the event, validates input, calls **core** services, and returns an API response via **common**.
 
 ---
 
