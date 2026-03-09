@@ -47,9 +47,11 @@ lambda_stack = TechBlogLambdaStack(
     app, "TechBlogLambdaStack",
     config=env_config,
     data_stack=data_stack,
+    auth_stack=auth_stack,
     env=cdk_env,
 )
 lambda_stack.add_dependency(data_stack)
+lambda_stack.add_dependency(auth_stack)
 
 # 4. API Gateway + custom Lambda authorizer – depends on Lambda
 api_stack = TechBlogApiStack(

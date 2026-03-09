@@ -78,5 +78,6 @@ class TechBlogApiStack(Stack):
         api.add_lambda_resource("posts/{postId}", "GET", lambda_stack.posts_get.function, authorizer=authorizer)
         api.add_lambda_resource("posts/{postId}", "PUT", lambda_stack.posts_put.function, authorizer=authorizer)
         api.add_lambda_resource("posts/{postId}", "DELETE", lambda_stack.posts_delete.function, authorizer=authorizer)
+        api.add_lambda_resource("auth/login", "POST", lambda_stack.auth_login.function)
 
         CfnOutput(self, "ApiUrl", value=api.api.url, description="API Gateway URL")

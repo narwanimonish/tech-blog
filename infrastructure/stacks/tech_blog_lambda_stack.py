@@ -6,6 +6,7 @@ Deploy after Data: cdk deploy TechBlogLambdaStack
 from __future__ import annotations
 
 from aws_cdk import Stack
+from aws_cdk import aws_iam as iam
 from constructs import Construct
 from config.dev import DevConfig
 from config.prod import ProdConfig
@@ -13,6 +14,7 @@ from constructs.dynamodb_table import DynamoDBTable
 from constructs.lambda_function import LambdaFunction
 from constructs.shared_layer import SharedLayer
 
+from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
 
 
@@ -25,6 +27,7 @@ class TechBlogLambdaStack(Stack):
         construct_id: str,
         config: DevConfig | ProdConfig,
         data_stack: TechBlogDataStack,
+        auth_stack: TechBlogAuthStack,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
@@ -151,6 +154,21 @@ class TechBlogLambdaStack(Stack):
             },
         )
 
+        # Public auth Lambda: exchanges username/password for Cognito tokens
+        self.auth_login = LambdaFunction(
+            self, "AuthLogin",
+            function_name=f"{app_name}-auth-login",
+            entry_path="../backend/webservice/cognito_login",
+            handler="runtime.cognito_login.lambda_handler",
+            layers=[layer],
+            timeout_seconds=30,
+            memory_size=256,
+            environment={
+                "USER_POOL_REGION": self.region,
+                "USER_POOL_CLIENT_ID": auth_stack.user_pool_client.user_pool_client_id,
+            },
+        )
+
         # IAM: grant Lambdas access to DynamoDB
         users_table.table.grant_read_write_data(self.users_get.function)
         users_table.table.grant_read_write_data(self.users_list.function)
@@ -161,3 +179,10 @@ class TechBlogLambdaStack(Stack):
         posts_table.table.grant_read_write_data(self.posts_post.function)
         posts_table.table.grant_read_write_data(self.posts_put.function)
         posts_table.table.grant_read_write_data(self.posts_delete.function)
+        self.auth_login.function.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["cognito-idp:InitiateAuth"],
+                resources=["*"],
+            )
+        )

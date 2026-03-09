@@ -1,5 +1,7 @@
 """
-Cognito User Pool, App Client, and Post-confirmation Lambda (populates users table).
+Cognito User Pool, App Client, and Cognito triggers.
+- Post-confirmation Lambda populates users table.
+- Post-authentication Lambda logs login audits.
 Depends on TechBlogDataStack for the users table.
 Deploy: cdk deploy TechBlogAuthStack (after TechBlogDataStack)
 """
@@ -17,7 +19,7 @@ from stacks.tech_blog_data_stack import TechBlogDataStack
 
 
 class TechBlogAuthStack(Stack):
-    """Cognito User Pool + App Client + Post-confirmation trigger to populate users table."""
+    """Cognito User Pool + App Client + Post-confirmation and Post-authentication triggers."""
 
     def __init__(
         self,
@@ -49,6 +51,21 @@ class TechBlogAuthStack(Stack):
         self.user_pool.add_trigger(
             cognito.UserPoolOperation.POST_CONFIRMATION,
             cognito_post_confirmation.function,
+        )
+
+        # Post-authentication Lambda: audit successful logins.
+        # Cognito does not provide JWT/refresh tokens to trigger events.
+        cognito_post_authentication = LambdaFunction(
+            self, "CognitoPostAuthentication",
+            function_name=f"{app_name}-cognito-post-authentication",
+            entry_path="../backend/webservice/cognito_post_authentication",
+            handler="runtime.cognito_post_authentication.lambda_handler",
+            timeout_seconds=10,
+            memory_size=128,
+        )
+        self.user_pool.add_trigger(
+            cognito.UserPoolOperation.POST_AUTHENTICATION,
+            cognito_post_authentication.function,
         )
 
         CfnOutput(self, "UserPoolId", value=self.user_pool.user_pool_id, export_name=f"{app_name}-user-pool-id")
