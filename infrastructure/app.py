@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
+import subprocess
 
-import boto3
 import aws_cdk as cdk
 from config import env_config
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -13,17 +13,19 @@ app = cdk.App()
 
 
 def _resolve_env():
-    """Resolve account/region from env vars, else from default AWS credentials (boto3)."""
+    """Resolve account/region from env vars, else from default AWS CLI profile."""
     account = os.environ.get("CDK_DEFAULT_ACCOUNT") or os.environ.get("AWS_ACCOUNT_ID")
     region = os.environ.get("CDK_DEFAULT_REGION") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
     if account and region:
         return cdk.Environment(account=account, region=region)
     try:
-        session = boto3.Session()
-        sts = session.client("sts")
-        identity = sts.get_caller_identity()
-        account = identity["Account"]
-        region = session.region_name or os.environ.get("AWS_REGION") or "us-east-1"
+        account = subprocess.check_output(
+            ["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"],
+            text=True,
+        ).strip()
+        region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+        if not region:
+            region = subprocess.check_output(["aws", "configure", "get", "region"], text=True).strip() or "us-east-1"
         return cdk.Environment(account=account, region=region)
     except Exception as e:
         raise RuntimeError(
