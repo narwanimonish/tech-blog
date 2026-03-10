@@ -2,12 +2,12 @@
 Lambda: GET /users/{userId} – get one user. Uses dynamodb_util, simple_api_util.
 Table env: usersStoreTable.
 """
-import os
 import logging
-import boto3
+import os
 
-import dynamodb_util
-import simple_api_util
+import boto3
+import common_modules.dynamodb_util as dynamodb_util
+import common_modules.simple_api_util as simple_api_util
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)

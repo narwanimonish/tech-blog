@@ -2,10 +2,10 @@
 Lambda: DELETE /users/{userId} – delete user. Uses dynamodb_util, simple_api_util.
 Table env: usersStoreTable.
 """
-import os
 import logging
-import boto3
+import os
 
+import boto3
 import dynamodb_util
 import simple_api_util
 
