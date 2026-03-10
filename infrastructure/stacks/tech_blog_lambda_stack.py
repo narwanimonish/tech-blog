@@ -56,6 +56,13 @@ class TechBlogLambdaStack(Stack):
                 "usersStoreTable": users_table.table.table_name,
             },
         )
+        # Legacy user Lambdas – same code as users_api; kept so API stack can be updated first, then remove these
+        _users_env = {"usersStoreTable": users_table.table.table_name}
+        self._users_get = LambdaFunction(self, "UsersGet", function_name=f"{app_name}-users-get", entry_path="../backend/webservice/users", handler="runtime.users.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_users_env)
+        self._users_list = LambdaFunction(self, "UsersList", function_name=f"{app_name}-users-list", entry_path="../backend/webservice/users", handler="runtime.users.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_users_env)
+        self._users_put = LambdaFunction(self, "UsersPut", function_name=f"{app_name}-users-put", entry_path="../backend/webservice/users", handler="runtime.users.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_users_env)
+        self._users_delete = LambdaFunction(self, "UsersDelete", function_name=f"{app_name}-users-delete", entry_path="../backend/webservice/users", handler="runtime.users.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_users_env)
+
         # Posts Lambda – single handler for all posts routes
         self.posts_api = LambdaFunction(
             self, "PostsApi",
@@ -69,6 +76,13 @@ class TechBlogLambdaStack(Stack):
                 "postsTable": posts_table.table.table_name,
             },
         )
+        # Legacy post Lambdas – same code as posts_api; kept so API stack can be updated first, then remove these
+        _posts_env = {"postsTable": posts_table.table.table_name}
+        self._posts_get = LambdaFunction(self, "PostsGet", function_name=f"{app_name}-posts-get", entry_path="../backend/webservice/posts", handler="runtime.posts.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_posts_env)
+        self._posts_list = LambdaFunction(self, "PostsList", function_name=f"{app_name}-posts-list", entry_path="../backend/webservice/posts", handler="runtime.posts.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_posts_env)
+        self._posts_post = LambdaFunction(self, "PostsPost", function_name=f"{app_name}-posts-post", entry_path="../backend/webservice/posts", handler="runtime.posts.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_posts_env)
+        self._posts_put = LambdaFunction(self, "PostsPut", function_name=f"{app_name}-posts-put", entry_path="../backend/webservice/posts", handler="runtime.posts.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_posts_env)
+        self._posts_delete = LambdaFunction(self, "PostsDelete", function_name=f"{app_name}-posts-delete", entry_path="../backend/webservice/posts", handler="runtime.posts.lambda_handler", layers=[layer], timeout_seconds=30, memory_size=256, environment=_posts_env)
         # Public auth Lambda: exchanges username/password for Cognito tokens
         self.auth_login = LambdaFunction(
             self, "AuthLogin",
@@ -88,6 +102,10 @@ class TechBlogLambdaStack(Stack):
         # IAM: grant Lambdas access to DynamoDB
         users_table.table.grant_read_write_data(self.users_api.function)
         posts_table.table.grant_read_write_data(self.posts_api.function)
+        for fn in (self._users_get, self._users_list, self._users_put, self._users_delete):
+            users_table.table.grant_read_write_data(fn.function)
+        for fn in (self._posts_get, self._posts_list, self._posts_post, self._posts_put, self._posts_delete):
+            posts_table.table.grant_read_write_data(fn.function)
         users_table.table.grant_read_write_data(self.auth_login.function)
         self.auth_login.function.add_to_role_policy(
             iam.PolicyStatement(

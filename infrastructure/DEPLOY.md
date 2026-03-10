@@ -8,7 +8,7 @@ Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (
 |-------|----------|
 | **TechBlogDataStack** | DynamoDB tables (users, posts). Deploy first. |
 | **TechBlogAuthStack** | Cognito User Pool + App Client + Hosted UI domain + Post-confirmation Lambda (populates users table). Depends on Data. |
-| **TechBlogLambdaStack** | Shared layer + 9 handler Lambdas. IAM grants to DynamoDB, env vars for table names. Depends on Data. |
+| **TechBlogLambdaStack** | Shared layer + unified users/posts Lambdas + auth login (legacy per-route Lambdas kept until API stack is updated). Depends on Data and Auth. |
 | **TechBlogApiStack** | API Gateway, custom Lambda authorizer, all routes. Depends on Lambda. |
 
 ## Prerequisites
@@ -77,6 +77,20 @@ cdk deploy TechBlogApiStack
 ```
 
 CDK will respect dependencies (Data → Auth → Lambda → Api). Approve IAM changes when prompted.
+
+### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack"
+
+The API stack must stop using old Lambda exports before those Lambdas can be removed. Do this order:
+
+1. **Deploy Lambda stack** (stack currently keeps legacy Lambdas so no exports are deleted):
+   ```bash
+   cdk deploy TechBlogLambdaStack
+   ```
+2. **Deploy API stack** (switches all routes to the unified `users_api` and `posts_api`):
+   ```bash
+   cdk deploy TechBlogApiStack
+   ```
+3. **Remove legacy Lambdas** from `stacks/tech_blog_lambda_stack.py` (the `_users_get` / `_posts_post` etc. block and their IAM grants), then deploy Lambda stack again to clean up.
 
 ## 4. Stack outputs
 
