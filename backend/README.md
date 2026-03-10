@@ -49,12 +49,15 @@ Each module follows this pattern (where applicable):
 
 ```
 webservice/
-├── posts/
-│   └── runtime/
-│       └── posts.py           # Unified posts handler (GET/POST/GET by id/PUT/DELETE)
-├── users/
-│   └── runtime/
-│       └── users.py           # Unified users handler (GET list/GET by id/PUT/DELETE)
+├── posts_get/
+├── posts_list/
+├── posts_post/
+├── posts_put/
+├── posts_delete/
+├── users_get/
+├── users_list/
+├── users_put/
+├── users_delete/
 ├── authorizer/
 ├── cognito_login/
 ├── cognito_post_authentication/
@@ -66,7 +69,7 @@ webservice/
 ## Package structure by module
 
 ### common
-- `common` — `dynamodb_util`, `simple_api_util`
+- `common` — `dynamodb_util`, `simple_api_util`, `errors`, `error_mapper`
 
 ### core
 - `core` — package root
@@ -74,8 +77,8 @@ webservice/
 - `core.users` — `service` (UsersService)
 
 ### webservice
-- Unified lambdas: `posts` and `users` handle all methods/routes for their resource.
-- Auth-related lambdas: `authorizer`, `cognito_login`, `cognito_post_authentication`, `cognito_post_confirmation`.
+- Per-route lambdas: `posts_get`, `posts_list`, `posts_post`, `posts_put`, `posts_delete`, `users_get`, `users_list`, `users_put`, `users_delete`.
+- Auth-related: `authorizer`, `cognito_login`, `cognito_post_authentication`, `cognito_post_confirmation`.
 - Each has a **handler** in `runtime/<name>.py` that parses the event, validates input, calls **core** services, and returns an API response via **common**.
 
 ---

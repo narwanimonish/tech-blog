@@ -69,10 +69,12 @@ class TechBlogApiStack(Stack):
             source_arn=api.api.arn_for_execute_api("*"),
         )
 
+        # All users routes → single users Lambda
         api.add_lambda_resource("users", "GET", lambda_stack.users_api.function, authorizer=authorizer)
         api.add_lambda_resource("users/{userId}", "GET", lambda_stack.users_api.function, authorizer=authorizer)
         api.add_lambda_resource("users/{userId}", "PUT", lambda_stack.users_api.function, authorizer=authorizer)
         api.add_lambda_resource("users/{userId}", "DELETE", lambda_stack.users_api.function, authorizer=authorizer)
+        # All posts routes → single posts Lambda
         api.add_lambda_resource("posts", "GET", lambda_stack.posts_api.function, authorizer=authorizer)
         api.add_lambda_resource("posts", "POST", lambda_stack.posts_api.function, authorizer=authorizer)
         api.add_lambda_resource("posts/{postId}", "GET", lambda_stack.posts_api.function, authorizer=authorizer)
