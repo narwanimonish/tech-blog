@@ -19,7 +19,7 @@ class UsersService:
         """Get a single user by id. Returns item dict or None."""
         return dynamodb_util.get_item(self._table, {"userId": user_id})
 
-    def put_user(self, user_id, data):
+    def update_user(self, user_id, data):
         """Create or update a user. data must be a dict; userId is set to user_id."""
         data["userId"] = user_id
         dynamodb_util.put_item(self._table, data)

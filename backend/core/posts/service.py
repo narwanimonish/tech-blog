@@ -20,7 +20,7 @@ class PostsService:
         """Get a single post by id. Returns item dict or None."""
         return dynamodb_util.get_item(self._table, {"postId": post_id})
 
-    def put_post(self, post_id, data):
+    def update_post(self, post_id, data):
         """Create or update a post. data must be a dict; postId is set to post_id."""
         data["postId"] = post_id
         dynamodb_util.put_item(self._table, data)
