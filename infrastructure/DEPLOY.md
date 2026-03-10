@@ -80,17 +80,26 @@ CDK will respect dependencies (Data → Auth → Lambda → Api). Approve IAM ch
 
 ### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack"
 
-The API stack must stop using old Lambda exports before those Lambdas can be removed. Do this order:
+The **live** API stack in AWS still imports the old Lambda exports. You must update the API stack so it stops using them, then you can remove the legacy Lambdas. Do this **exact order**:
 
-1. **Deploy Lambda stack** (stack currently keeps legacy Lambdas so no exports are deleted):
+1. **Confirm legacy block is in the Lambda stack**  
+   Open `stacks/tech_blog_lambda_stack.py` and ensure the "Legacy user Lambdas" and "Legacy post Lambdas" blocks are present (the `_users_get`, `_users_delete`, `_posts_post`, etc. definitions). Do **not** remove them until step 4.
+
+2. **Deploy Lambda stack** (with legacy still in code, so no exports are deleted):
    ```bash
    cdk deploy TechBlogLambdaStack
    ```
-2. **Deploy API stack** (switches all routes to the unified `users_api` and `posts_api`):
+   If this still fails with "Cannot delete export", run `cdk synth TechBlogLambdaStack` and search the generated template in `cdk.out/` for `"UsersDelete"` – if it’s missing, the deployed code may be from another branch or the file wasn’t saved.
+
+3. **Deploy API stack** (this updates the live API to use `users_api` and `posts_api`, so it no longer uses the old exports):
    ```bash
    cdk deploy TechBlogApiStack
    ```
-3. **Remove legacy Lambdas** from `stacks/tech_blog_lambda_stack.py` (the `_users_get` / `_posts_post` etc. block and their IAM grants), then deploy Lambda stack again to clean up.
+
+4. **Remove the legacy Lambdas** from `stacks/tech_blog_lambda_stack.py` (the "Legacy user Lambdas" and "Legacy post Lambdas" blocks and their IAM grants in the `for fn in (...)` loops), then deploy Lambda stack again:
+   ```bash
+   cdk deploy TechBlogLambdaStack
+   ```
 
 ## 4. Stack outputs
 
