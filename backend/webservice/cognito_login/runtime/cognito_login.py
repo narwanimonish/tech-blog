@@ -30,28 +30,28 @@ def lambda_handler(event, context):
 
     if not CLIENT_ID:
         LOGGER.error("auth_login missing USER_POOL_CLIENT_ID request_id=%s", request_id)
-        return simple_api_util.build_response(500, {"message": "Missing USER_POOL_CLIENT_ID"})
+        return simple_api_util.build_error_response("CONFIG_ERROR", "Missing USER_POOL_CLIENT_ID", 500, request_id=request_id)
 
     try:
         LOGGER.info("auth_login reading request body request_id=%s", request_id)
         body = event.get("body")
         if not body:
             LOGGER.warning("auth_login body missing request_id=%s", request_id)
-            return simple_api_util.build_response(400, {"message": "Body required"})
+            return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
 
         try:
             LOGGER.info("auth_login parsing JSON body request_id=%s", request_id)
             data = json.loads(body)
         except json.JSONDecodeError:
             LOGGER.warning("auth_login invalid JSON request_id=%s", request_id)
-            return simple_api_util.build_response(400, {"message": "Invalid JSON"})
+            return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
 
         LOGGER.info("auth_login validating payload request_id=%s", request_id)
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
         if not username or not password:
             LOGGER.warning("auth_login missing username/password request_id=%s", request_id)
-            return simple_api_util.build_response(400, {"message": "username and password are required"})
+            return simple_api_util.build_error_response("BAD_REQUEST", "username and password are required", 400, request_id=request_id)
 
         LOGGER.info("auth_login initiating Cognito auth request_id=%s username=%s", request_id, username)
         resp = COGNITO.initiate_auth(
@@ -67,7 +67,13 @@ def lambda_handler(event, context):
         auth = resp.get("AuthenticationResult") or {}
         if not auth:
             LOGGER.warning("auth_login challenge required request_id=%s username=%s", request_id, username)
-            return simple_api_util.build_response(401, {"message": "Authentication challenge required", "data": resp})
+            return simple_api_util.build_error_response(
+                "AUTH_CHALLENGE_REQUIRED",
+                "Authentication challenge required",
+                401,
+                details={"data": resp},
+                request_id=request_id,
+            )
 
         # Intentional full token logging per request.
         LOGGER.info("auth_login token payload request_id=%s username=%s tokens=%s", request_id, username, json.dumps(auth))
@@ -85,13 +91,13 @@ def lambda_handler(event, context):
         )
     except COGNITO.exceptions.NotAuthorizedException:
         LOGGER.warning("auth_login invalid credentials request_id=%s", request_id)
-        return simple_api_util.build_response(401, {"message": "Invalid username or password"})
+        return simple_api_util.build_error_response("UNAUTHORIZED", "Invalid username or password", 401, request_id=request_id)
     except COGNITO.exceptions.UserNotConfirmedException:
         LOGGER.warning("auth_login user not confirmed request_id=%s", request_id)
-        return simple_api_util.build_response(403, {"message": "User not confirmed"})
+        return simple_api_util.build_error_response("USER_NOT_CONFIRMED", "User not confirmed", 403, request_id=request_id)
     except Exception as e:
         LOGGER.exception("auth_login unexpected error request_id=%s error=%s", request_id, e)
-        return simple_api_util.build_response(500, {"message": "Internal server error"})
+        return simple_api_util.build_error_from_exception(e, request_id=request_id)
 
 
 def _upsert_user_from_access_token(access_token, request_id):
