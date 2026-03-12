@@ -1,3 +1,4 @@
+import aws_cdk as cdk
 from aws_cdk import (
     Duration,
     aws_lambda as _lambda,
@@ -21,6 +22,14 @@ class LambdaFunction(Construct):
     ):
         super().__init__(scope, id)
 
+        log_group = logs.LogGroup(
+            self,
+            f"{function_name}LogGroup",
+            log_group_name=f"/aws/lambda/{function_name}",
+            retention=logs.RetentionDays.ONE_WEEK,  # Set your desired retention
+            removal_policy=cdk.RemovalPolicy.DESTROY,  # Optional: policy when stack is destroyed
+        )
+
         self.function = _lambda.Function(
             self,
             f"{id}Function",
@@ -31,8 +40,7 @@ class LambdaFunction(Construct):
             timeout=Duration.seconds(timeout_seconds),
             memory_size=memory_size,
             environment=environment or {},
-            # Automatically set log retention to 1 week to save costs
-            log_retention=logs.RetentionDays.ONE_WEEK,
+            log_group=log_group,
             **kwargs,
         )
 

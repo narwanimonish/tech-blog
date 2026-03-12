@@ -2,9 +2,9 @@ name: Deploy Python CDK Stack
 on:
   push:
     branches: [main]
-    paths:
-      - 'infrastructure/**'
-      - 'backend/**'
+    # paths:
+    #   - 'infrastructure/**'
+    #   - 'backend/**'
 
 permissions:
   id-token: write
