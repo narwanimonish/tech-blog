@@ -1,0 +1,47 @@
+name: Deploy Python CDK Stack
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - 'backend/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Install Dependencies
+        run: |
+          # Install CDK CLI via NPM (standard even for Python CDK)
+          npm install -g aws-cdk
+
+          # Install Infrastructure deps
+          cd infrastructure
+          python -m pip install -r requirements.txt
+
+          # Optional: Install Backend deps if you run tests here
+          # cd ../backend && python -m pip install -r requirements.txt
+
+      - name: CDK Deploy
+        run: |
+          cd infrastructure
+          cdk deploy --all --require-approval never
