@@ -24,6 +24,12 @@ TABLE = boto3.resource("dynamodb").Table(TABLE_NAME)
 SERVICE = PostsService(TABLE)
 
 
+def _creator_email(event):
+    """Extract creator email from authorizer context (set by custom Lambda authorizer)."""
+    authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
+    return authorizer.get("email") or ""
+
+
 def lambda_handler(event, context):
     request_id = getattr(context, "aws_request_id", "unknown")
     method = (event.get("httpMethod") or "").upper()
@@ -42,7 +48,7 @@ def lambda_handler(event, context):
                 data = json.loads(body)
             except json.JSONDecodeError:
                 return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            return simple_api_util.build_response(200, SERVICE.create_post(data))
+            return simple_api_util.build_response(200, SERVICE.create_post(data, created_by=_creator_email(event)))
 
         if method == "GET" and post_id:
             item = SERVICE.get_post(post_id)
