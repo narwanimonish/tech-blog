@@ -122,7 +122,7 @@ def _upsert_user_from_access_token(access_token, request_id):
         if name:
             data["name"] = name
 
-        SERVICE.put_user(user_id, data)
+        SERVICE.update_user(user_id, data)
         LOGGER.info("auth_login upserted user in DynamoDB request_id=%s userId=%s", request_id, user_id)
     except Exception as e:
         LOGGER.exception("auth_login failed to upsert user request_id=%s error=%s", request_id, e)

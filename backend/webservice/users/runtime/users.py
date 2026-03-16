@@ -47,7 +47,7 @@ def lambda_handler(event, context):
                 data = json.loads(body)
             except json.JSONDecodeError:
                 return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            return simple_api_util.build_response(200, SERVICE.put_user(user_id, data))
+            return simple_api_util.build_response(200, SERVICE.update_user(user_id, data))
 
         if method == "DELETE" and user_id:
             SERVICE.delete_user(user_id)
