@@ -1,5 +1,6 @@
 """
 Lambdas: shared layer + unified users/posts handlers + auth login.
+Uses backend/config.json for timeout, memory_size, reserved_concurrency per function.
 Requires TechBlogDataStack (table names + IAM grants).
 Deploy after Data: cdk deploy TechBlogLambdaStack
 """
@@ -13,6 +14,7 @@ from config.prod import ProdConfig
 from constructs.dynamodb_table import DynamoDBTable
 from constructs.lambda_function import LambdaFunction
 from constructs.shared_layer import SharedLayer
+from lambda_config import get_lambda_settings
 
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -45,6 +47,10 @@ class TechBlogLambdaStack(Stack):
         users_env = {"usersStoreTable": users_table.table.table_name}
         posts_env = {"postsTable": posts_table.table.table_name}
 
+        u_cfg = get_lambda_settings("users_api")
+        p_cfg = get_lambda_settings("posts_api")
+        auth_cfg = get_lambda_settings("cognito_login")
+
         # Users Lambda – single handler for all users routes (GET /users, GET/PUT/DELETE /users/{userId})
         self.users_api = LambdaFunction(
             self, "UsersApi",
@@ -52,9 +58,10 @@ class TechBlogLambdaStack(Stack):
             entry_path="../backend/webservice/users",
             handler="runtime.users.lambda_handler",
             layers=[layer],
-            timeout_seconds=30,
-            memory_size=256,
             environment=users_env,
+            timeout_seconds=u_cfg["timeout_seconds"],
+            memory_size=u_cfg["memory_size"],
+            reserved_concurrent_executions=u_cfg["reserved_concurrent_executions"],
         )
 
         # Posts Lambda – single handler for all posts routes (GET/POST /posts, GET/PUT/DELETE /posts/{postId})
@@ -64,9 +71,10 @@ class TechBlogLambdaStack(Stack):
             entry_path="../backend/webservice/posts",
             handler="runtime.posts.lambda_handler",
             layers=[layer],
-            timeout_seconds=30,
-            memory_size=256,
             environment=posts_env,
+            timeout_seconds=p_cfg["timeout_seconds"],
+            memory_size=p_cfg["memory_size"],
+            reserved_concurrent_executions=p_cfg["reserved_concurrent_executions"],
         )
 
         # Auth login (public)
@@ -76,8 +84,9 @@ class TechBlogLambdaStack(Stack):
             entry_path="../backend/webservice/cognito_login",
             handler="runtime.cognito_login.lambda_handler",
             layers=[layer],
-            timeout_seconds=30,
-            memory_size=256,
+            timeout_seconds=auth_cfg["timeout_seconds"],
+            memory_size=auth_cfg["memory_size"],
+            reserved_concurrent_executions=auth_cfg["reserved_concurrent_executions"],
             environment={
                 "USER_POOL_REGION": self.region,
                 "USER_POOL_CLIENT_ID": auth_stack.user_pool_client.user_pool_client_id,

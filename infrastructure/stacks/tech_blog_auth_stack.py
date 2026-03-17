@@ -2,6 +2,7 @@
 Cognito User Pool, App Client, and Cognito triggers.
 - Post-confirmation Lambda populates users table.
 - Post-authentication Lambda logs login audits.
+Uses backend/config.json for trigger Lambda timeout, memory, concurrency.
 Depends on TechBlogDataStack for the users table.
 Deploy: cdk deploy TechBlogAuthStack (after TechBlogDataStack)
 """
@@ -14,6 +15,7 @@ from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs.cognito_auth import CognitoAuth
 from constructs.lambda_function import LambdaFunction
+from lambda_config import get_lambda_settings
 
 from stacks.tech_blog_data_stack import TechBlogDataStack
 
@@ -37,14 +39,18 @@ class TechBlogAuthStack(Stack):
         self.user_pool = self.cognito_auth.get_user_pool()
         self.user_pool_client = self.cognito_auth.user_pool_client
 
+        post_conf_cfg = get_lambda_settings("cognito_post_confirmation")
+        post_auth_cfg = get_lambda_settings("cognito_post_authentication")
+
         # Post-confirmation Lambda: write new Cognito user to DynamoDB users table (no layer needed)
         cognito_post_confirmation = LambdaFunction(
             self, "CognitoPostConfirmation",
             function_name=f"{app_name}-cognito-post-confirmation",
             entry_path="../backend/webservice/cognito_post_confirmation",
             handler="runtime.cognito_post_confirmation.lambda_handler",
-            timeout_seconds=10,
-            memory_size=128,
+            timeout_seconds=post_conf_cfg["timeout_seconds"],
+            memory_size=post_conf_cfg["memory_size"],
+            reserved_concurrent_executions=post_conf_cfg["reserved_concurrent_executions"],
             environment={"usersStoreTable": users_table.table.table_name},
         )
         users_table.table.grant_read_write_data(cognito_post_confirmation.function)
@@ -60,8 +66,9 @@ class TechBlogAuthStack(Stack):
             function_name=f"{app_name}-cognito-post-authentication",
             entry_path="../backend/webservice/cognito_post_authentication",
             handler="runtime.cognito_post_authentication.lambda_handler",
-            timeout_seconds=10,
-            memory_size=128,
+            timeout_seconds=post_auth_cfg["timeout_seconds"],
+            memory_size=post_auth_cfg["memory_size"],
+            reserved_concurrent_executions=post_auth_cfg["reserved_concurrent_executions"],
         )
         self.user_pool.add_trigger(
             cognito.UserPoolOperation.POST_AUTHENTICATION,

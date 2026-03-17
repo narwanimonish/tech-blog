@@ -24,24 +24,27 @@ class LambdaFunction(Construct):
         layers: Optional[List[_lambda.ILayerVersion]] = None,
         timeout_seconds: int = 30,
         memory_size: int = 128,
+        reserved_concurrent_executions: Optional[int] = None,
         **kwargs
     ):
         super().__init__(scope, id)
 
-        self.function = _lambda.Function(
-            self, f"{id}Function",
-            function_name=function_name,
-            runtime=_lambda.Runtime.PYTHON_3_12,  # Standardized runtime
-            handler=handler,
-            code=_lambda.Code.from_asset(entry_path),
-            timeout=Duration.seconds(timeout_seconds),
-            memory_size=memory_size,
-            environment=environment or {},
-            layers=layers or [],
-            # Automatically set log retention to 1 week to save costs
-            log_retention=logs.RetentionDays.ONE_WEEK,
-            **kwargs
-        )
+        fn_kwargs = {
+            "function_name": function_name,
+            "runtime": _lambda.Runtime.PYTHON_3_12,
+            "handler": handler,
+            "code": _lambda.Code.from_asset(entry_path),
+            "timeout": Duration.seconds(timeout_seconds),
+            "memory_size": memory_size,
+            "environment": environment or {},
+            "layers": layers or [],
+            "log_retention": logs.RetentionDays.ONE_WEEK,
+        }
+        if reserved_concurrent_executions is not None:
+            fn_kwargs["reserved_concurrent_executions"] = reserved_concurrent_executions
+        fn_kwargs.update(kwargs)
+
+        self.function = _lambda.Function(self, f"{id}Function", **fn_kwargs)
         
     def get_lambda_function(self) -> _lambda.Function:
         return self.function

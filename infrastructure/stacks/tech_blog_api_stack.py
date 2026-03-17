@@ -1,5 +1,6 @@
 """
 API Gateway + custom Lambda authorizer. All routes protected by authorizer.
+Uses backend/config.json for authorizer Lambda timeout, memory, concurrency.
 Requires TechBlogLambdaStack (handler Lambdas). Authorizer Lambda lives here to avoid circular deps.
 Deploy last: cdk deploy TechBlogApiStack
 """
@@ -13,6 +14,7 @@ from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs.lambda_function import LambdaFunction
 from constructs.rest_api_gateway import RestApiGateway
+from lambda_config import get_lambda_settings
 
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
@@ -30,6 +32,7 @@ class TechBlogApiStack(Stack):
     ):
         super().__init__(scope, construct_id, **kwargs)
         app_name = config.APP_NAME
+        auth_cfg = get_lambda_settings("authorizer")
 
         # Authorizer Lambda in this stack (avoids circular dependency with Lambda stack)
         authorizer_lambda = LambdaFunction(
@@ -37,8 +40,9 @@ class TechBlogApiStack(Stack):
             function_name=f"{app_name}-api-authorizer",
             entry_path="../backend/webservice/authorizer",
             handler="runtime.authorizer.lambda_handler",
-            timeout_seconds=10,
-            memory_size=128,
+            timeout_seconds=auth_cfg["timeout_seconds"],
+            memory_size=auth_cfg["memory_size"],
+            reserved_concurrent_executions=auth_cfg["reserved_concurrent_executions"],
             environment={"USER_POOL_REGION": self.region},
         )
         authorizer_lambda.function.add_to_role_policy(

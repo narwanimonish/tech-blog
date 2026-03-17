@@ -10,7 +10,8 @@
 backend/
 ├── README.md                 # This file – structure and modules
 ├── SETUP.md                  # Setup, run, deploy
-├── config.json               # Lambda config (timeout, memory, concurrency)
+├── api-spec.yaml             # OpenAPI 3.0 spec – paths, schemas, security (single source of truth)
+├── config.json               # Lambda config (timeout, memory, concurrency) – read by CDK on deploy
 ├── build.py                  # Build script – creates layer_bundle for Lambda Layer
 ├── db/
 │   └── migration/
@@ -87,7 +88,8 @@ webservice/
 
 | What            | Where |
 |----------------|--------|
-| Lambda config  | `config.json` (root) |
+| API spec (OpenAPI) | `api-spec.yaml` (root) |
+| Lambda config  | `config.json` (root) – used by CDK for timeout, memory, reserved_concurrency |
 | DB migrations  | `db/migration/` |
 | Scripts / data | `scripts/`, `scripts/data/` |
 | Common util    | `common/dynamodb_util.py`, `common/simple_api_util.py` |
