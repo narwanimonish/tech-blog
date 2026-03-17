@@ -70,7 +70,8 @@ webservice/
 ## Package structure by module
 
 ### common
-- `common` — `dynamodb_util`, `simple_api_util`, `errors`, `error_mapper`
+- `common` — `dynamodb_util`, `simple_api_util`, `errors`, `error_mapper`, `role_util`
+- `common.rbac_config` — JSON configs for RBAC: `service_level_permissions.json`, `consolidated_api_permissions.json`, `role_permissions.json`
 
 ### core
 - `core` — package root
@@ -97,6 +98,33 @@ webservice/
 | Users service  | `core/users/service.py` |
 | Handlers       | `webservice/<name>/runtime/<name>.py` |
 | Layer bundle   | `build.py` → `layer_bundle/python/{common,core}` (Lambda Layer; no copy per handler) |
+| RBAC config    | `common/rbac_config/*.json` (service levels, API permissions, role→permissions) |
+
+---
+
+## Role-based access control (RBAC)
+
+Three access levels (aligned with service-level permissions):
+
+- **fullaccess** — Full CRUD on the resource.
+- **manage** — Create, update, delete (e.g. posts).
+- **view** — Read-only.
+
+**Roles:**
+
+- **admin** — `users.fullaccess`, `posts.fullaccess`.
+- **writer** — `users.view`, `posts.manage` (can create/update/delete posts).
+- **reader** — `users.view`, `posts.view` (read-only).
+
+User **role** is stored in the DynamoDB **users** table (`role` field). New users get `reader` by default (set in post-confirmation and preserved on login upsert). To make a user admin, set `role` to `admin` in the users table.
+
+**Flow:** Before handling a request, the users and posts handlers call `role_util.is_user_action_valid(event)`. That looks up the user’s role from the users table, resolves the required permission for the API path/method from `consolidated_api_permissions.json`, and checks the role’s permissions from `role_permissions.json` (with hierarchy: fullaccess ≥ manage ≥ view). If the check fails, the handler returns **403 Forbidden** with `errorCode: FORBIDDEN`.
+
+Config files (in `common/rbac_config/`, included in the Lambda layer):
+
+- **service_level_permissions.json** — Defines services (users, posts) and their actions per level.
+- **consolidated_api_permissions.json** — Maps API path + method to required permission(s).
+- **role_permissions.json** — Maps each role to its service-level permissions.
 
 ---
 
