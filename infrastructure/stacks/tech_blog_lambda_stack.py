@@ -45,7 +45,10 @@ class TechBlogLambdaStack(Stack):
         layer = shared_layer.get_layer()
 
         users_env = {"usersStoreTable": users_table.table.table_name}
-        posts_env = {"postsTable": posts_table.table.table_name}
+        posts_env = {
+            "postsTable": posts_table.table.table_name,
+            "usersStoreTable": users_table.table.table_name,  # for RBAC role lookup
+        }
 
         u_cfg = get_lambda_settings("users_api")
         p_cfg = get_lambda_settings("posts_api")
@@ -94,9 +97,10 @@ class TechBlogLambdaStack(Stack):
             },
         )
 
-        # IAM: grant Lambdas access to DynamoDB
+        # IAM: grant Lambdas access to DynamoDB (posts_api needs users read for RBAC role lookup)
         users_table.table.grant_read_write_data(self.users_api.function)
         posts_table.table.grant_read_write_data(self.posts_api.function)
+        users_table.table.grant_read_data(self.posts_api.function)
         users_table.table.grant_read_write_data(self.auth_login.function)
         self.auth_login.function.add_to_role_policy(
             iam.PolicyStatement(
