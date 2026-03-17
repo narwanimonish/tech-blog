@@ -1,0 +1,58 @@
+{
+  "apis": [
+    {
+      "path": "/users",
+      "method": "GET",
+      "description": "List all users",
+      "permissions": ["users.view"]
+    },
+    {
+      "path": "/users/{userId}",
+      "method": "GET",
+      "description": "Get user by ID",
+      "permissions": ["users.view"]
+    },
+    {
+      "path": "/users/{userId}",
+      "method": "PUT",
+      "description": "Update user",
+      "permissions": ["users.manage"]
+    },
+    {
+      "path": "/users/{userId}",
+      "method": "DELETE",
+      "description": "Delete user",
+      "permissions": ["users.fullaccess"]
+    },
+    {
+      "path": "/posts",
+      "method": "GET",
+      "description": "List all posts",
+      "permissions": ["posts.view"]
+    },
+    {
+      "path": "/posts",
+      "method": "POST",
+      "description": "Create post",
+      "permissions": ["posts.manage"]
+    },
+    {
+      "path": "/posts/{postId}",
+      "method": "GET",
+      "description": "Get post by ID",
+      "permissions": ["posts.view"]
+    },
+    {
+      "path": "/posts/{postId}",
+      "method": "PUT",
+      "description": "Update post",
+      "permissions": ["posts.manage"]
+    },
+    {
+      "path": "/posts/{postId}",
+      "method": "DELETE",
+      "description": "Delete post",
+      "permissions": ["posts.manage"]
+    }
+  ]
+}

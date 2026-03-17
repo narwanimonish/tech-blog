@@ -1,0 +1,20 @@
+{
+  "roles": {
+    "admin": {
+      "users": "fullaccess",
+      "posts": "fullaccess",
+      "description": "Full access to all resources."
+    },
+    "writer": {
+      "users": "view",
+      "posts": "manage",
+      "description": "Can read users; can create, update, delete posts."
+    },
+    "reader": {
+      "users": "view",
+      "posts": "view",
+      "description": "Read-only access to users and posts."
+    }
+  },
+  "default_role": "reader"
+}

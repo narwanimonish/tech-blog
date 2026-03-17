@@ -117,10 +117,13 @@ def _upsert_user_from_access_token(access_token, request_id):
             LOGGER.warning("auth_login skip user upsert: missing sub request_id=%s", request_id)
             return
 
+        # Preserve existing role when upserting (get existing user first)
+        existing = SERVICE.get_user(user_id) or {}
         data = {"email": attrs.get("email", "")}
         name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username")
         if name:
             data["name"] = name
+        data["role"] = existing.get("role", "reader")
 
         SERVICE.update_user(user_id, data)
         LOGGER.info("auth_login upserted user in DynamoDB request_id=%s userId=%s", request_id, user_id)

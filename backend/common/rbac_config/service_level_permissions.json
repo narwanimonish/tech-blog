@@ -1,0 +1,34 @@
+{
+  "services": {
+    "users": {
+      "name": "Users",
+      "fullaccess": {
+        "action": "users.fullaccess",
+        "description": "Full CRUD on users (list, get, update, delete any user)."
+      },
+      "manage": {
+        "action": "users.manage",
+        "description": "Update user (e.g. own profile)."
+      },
+      "view": {
+        "action": "users.view",
+        "description": "List and get users (read-only)."
+      }
+    },
+    "posts": {
+      "name": "Posts",
+      "fullaccess": {
+        "action": "posts.fullaccess",
+        "description": "Full CRUD on posts (list, get, create, update, delete any post)."
+      },
+      "manage": {
+        "action": "posts.manage",
+        "description": "Create, update, delete posts (write access)."
+      },
+      "view": {
+        "action": "posts.view",
+        "description": "List and get posts (read-only)."
+      }
+    }
+  }
+}

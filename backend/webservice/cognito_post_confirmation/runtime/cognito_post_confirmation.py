@@ -37,7 +37,7 @@ def lambda_handler(event, context):
     email = attrs.get("email", "")
     name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username") or ""
 
-    item = {"userId": user_id, "email": email}
+    item = {"userId": user_id, "email": email, "role": "reader"}
     if name:
         item["name"] = name
 
