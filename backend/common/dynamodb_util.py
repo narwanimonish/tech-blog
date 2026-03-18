@@ -62,7 +62,7 @@ def scan_all(table):
         items = []
         response = table.scan()
         items.extend(response.get("Items", []))
-        while "LastEvaluatedKey" in response:
+        while response.get("LastEvaluatedKey"):
             response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
             items.extend(response.get("Items", []))
         return items
