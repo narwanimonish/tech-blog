@@ -39,9 +39,57 @@ def _get_api_permissions_config() -> list:
     return data.get("apis", [])
 
 
-def _get_role_permissions_config() -> dict:
+def _get_role_permissions_config() -> tuple:
     data = _load_json("role_permissions.json")
     return data.get("roles", {}), data.get("default_role", "reader")
+
+
+def _get_service_level_config() -> dict:
+    """Load service_level_permissions.json (services and their levels with dependencies)."""
+    data = _load_json("service_level_permissions.json")
+    return data.get("services", {})
+
+
+def _get_dependencies_for_level(services_config: dict, service: str, level: str) -> list[str]:
+    """
+    Return the dependency list for a service.level from service_level_permissions.
+    Supports both 'dependancies' and 'dependencies' keys.
+    """
+    level = (level or "").lower()
+    svc = (services_config.get(service) or {})
+    level_config = svc.get(level) or {}
+    deps = level_config.get("dependancies") or level_config.get("dependencies") or []
+    return list(deps) if isinstance(deps, list) else []
+
+
+def _expand_effective_permissions(role_permissions: dict) -> set[str]:
+    """
+    Expand role's service->level map into a set of effective permission strings,
+    using dependencies from service_level_permissions.json (fullaccess -> manage, view; manage -> view).
+    """
+    services_config = _get_service_level_config()
+    effective = set()
+    for service, level in (role_permissions or {}).items():
+        level = (level or "").lower()
+        if not service or not level:
+            continue
+        # Add the direct action (e.g. posts.fullaccess)
+        action = f"{service}.{level}"
+        effective.add(action)
+        # Recursively add dependencies
+        to_process = [action]
+        seen = {action}
+        while to_process:
+            current = to_process.pop()
+            if "." not in current:
+                continue
+            svc, lv = current.split(".", 1)
+            for dep in _get_dependencies_for_level(services_config, svc, lv):
+                if dep and dep not in seen:
+                    seen.add(dep)
+                    effective.add(dep)
+                    to_process.append(dep)
+    return effective
 
 
 def _normalize_path(path: str) -> str:
@@ -68,29 +116,16 @@ def _get_required_permissions(path: str, method: str) -> list[str]:
     return []
 
 
-def _level_rank(level: str) -> int:
-    level = (level or "").lower()
-    for i, lv in enumerate(_LEVEL_ORDER):
-        if lv == level:
-            return i
-    return -1
-
-
 def _role_has_permission(role_permissions: dict, required_permission: str) -> bool:
     """
-    Check if role's permissions satisfy required permission.
-    required_permission is e.g. "posts.manage". Role has {"posts": "manage", "users": "view"}.
-    fullaccess >= manage >= view.
+    Check if role's permissions satisfy required permission using dependencies from
+    service_level_permissions.json. Expands role's service->level into effective
+    permissions (including dependancies), then checks if required is in that set.
     """
     if not required_permission or "." not in required_permission:
         return False
-    service, required_level = required_permission.split(".", 1)
-    role_level = (role_permissions.get(service) or "").lower()
-    required_rank = _level_rank(required_level)
-    role_rank = _level_rank(role_level)
-    if required_rank < 0 or role_rank < 0:
-        return False
-    return role_rank >= required_rank
+    effective = _expand_effective_permissions(role_permissions)
+    return required_permission.strip().lower() in effective
 
 
 def _get_user_role(user_id: str, users_table_name: str) -> str:

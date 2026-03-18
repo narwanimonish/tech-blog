@@ -4,10 +4,12 @@
       "name": "Users",
       "fullaccess": {
         "action": "users.fullaccess",
+        "dependancies": ["users.manage", "users.view"],
         "description": "Full CRUD on users (list, get, update, delete any user)."
       },
       "manage": {
         "action": "users.manage",
+        "dependancies": ["users.view"],
         "description": "Update user (e.g. own profile)."
       },
       "view": {
@@ -19,10 +21,12 @@
       "name": "Posts",
       "fullaccess": {
         "action": "posts.fullaccess",
+        "dependancies": ["posts.manage", "posts.view"],
         "description": "Full CRUD on posts (list, get, create, update, delete any post)."
       },
       "manage": {
         "action": "posts.manage",
+        "dependancies": ["posts.view"],
         "description": "Create, update, delete posts (write access)."
       },
       "view": {
