@@ -1,9 +1,12 @@
 {
+    "editor.formatOnSave": true,
+    // --- Python (Ruff) Settings ---
+    // You must install the official "Ruff" extension in VS Code for this to work
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.codeActionsOnSave": {
-            "source.fixAll.ruff": "explicit",
-            "source.organizeImports.ruff": "explicit"
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
         }
     },
     "python.analysis.typeCheckingMode": "basic",

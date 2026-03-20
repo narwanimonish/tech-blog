@@ -1,0 +1,30 @@
+[tool.ruff]
+# Target Python 3.11 (matches our Lambda and CDK environment)
+target-version = "py311"
+
+# Exclude standard virtual environments and CDK output
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "cdk.out",
+    "frontend",
+    "__pycache__"
+]
+
+# Set the maximum line length
+line-length = 88
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`), pycodestyle (`E`, `W`), and isort (`I`)
+select = ["E", "F", "W", "I"]
+ignore = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+# Use double quotes for strings (standard Python convention)
+quote-style = "double"
+# Indent with spaces
+indent-style = "space"
