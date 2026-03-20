@@ -3,11 +3,12 @@ import os
 import subprocess
 
 import aws_cdk as cdk
+
 from config import env_config
-from stacks.tech_blog_data_stack import TechBlogDataStack
-from stacks.tech_blog_auth_stack import TechBlogAuthStack
-from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 from stacks.tech_blog_api_stack import TechBlogApiStack
+from stacks.tech_blog_auth_stack import TechBlogAuthStack
+from stacks.tech_blog_data_stack import TechBlogDataStack
+from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
 app = cdk.App()
 
@@ -61,5 +62,6 @@ api_stack = TechBlogApiStack(
     env=cdk_env,
 )
 api_stack.add_dependency(lambda_stack)
+
 
 app.synth()

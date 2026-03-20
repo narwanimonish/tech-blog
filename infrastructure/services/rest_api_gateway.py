@@ -1,8 +1,6 @@
-from typing import Optional
 
-from aws_cdk import Duration
-from aws_cdk import aws_apigateway as apigw
-from aws_cdk import aws_lambda as _lambda
+from aws_cdk import Duration, aws_apigateway as apigw, aws_lambda as _lambda
+
 from constructs import Construct
 
 
@@ -14,14 +12,16 @@ class RestApiGateway(Construct):
         api_name: str,
         allowed_origins: list[str] | None = None,
         deploy_options: apigw.StageOptions | None = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(scope, id)
 
-        origins = allowed_origins or []
+        # If no origins provided, we default to none (strictest)
+        origins = allowed_origins or ["*"]
 
         self.api = apigw.RestApi(
-            self, f"{id}RestApi",
+            self,
+            f"{id}RestApi",
             rest_api_name=api_name,
             deploy_options=deploy_options or apigw.StageOptions(stage_name="dev"),
             default_cors_preflight_options=apigw.CorsOptions(
@@ -34,9 +34,10 @@ class RestApiGateway(Construct):
                     "X-Api-Key",
                     "X-Amz-Security-Token",
                 ],
+                # Keeps the browser from re-checking CORS for 10 minutes
                 max_age=Duration.minutes(10),
             ),
-            **kwargs
+            **kwargs,
         )
 
     def add_lambda_resource(
@@ -44,7 +45,7 @@ class RestApiGateway(Construct):
         path: str,
         method: str,
         handler: _lambda.IFunction,
-        authorizer: Optional[apigw.IAuthorizer] = None,
+        authorizer: apigw.IAuthorizer | None = None,
     ):
         """Add a route; path can include params e.g. 'posts/{postId}'."""
         resource = self.api.root.resource_for_path(path)
