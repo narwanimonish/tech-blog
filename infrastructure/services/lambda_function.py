@@ -4,6 +4,7 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_logs as logs,
 )
+
 from constructs import Construct
 
 
@@ -16,8 +17,10 @@ class LambdaFunction(Construct):
         entry_path: str,
         handler: str = "index.handler",
         environment: dict[str, str] | None = None,
+        layers: list[_lambda.ILayerVersion] | None = None,
         timeout_seconds: int = 30,
         memory_size: int = 128,
+        reserved_concurrent_executions: int | None = None,
         **kwargs,
     ):
         super().__init__(scope, id)
@@ -30,19 +33,22 @@ class LambdaFunction(Construct):
             removal_policy=cdk.RemovalPolicy.DESTROY,  # Optional: policy when stack is destroyed
         )
 
-        self.function = _lambda.Function(
-            self,
-            f"{id}Function",
-            function_name=function_name,
-            runtime=_lambda.Runtime.PYTHON_3_12,  # Standardized runtime
-            handler=handler,
-            code=_lambda.Code.from_asset(path=entry_path),
-            timeout=Duration.seconds(timeout_seconds),
-            memory_size=memory_size,
-            environment=environment or {},
-            log_group=log_group,
-            **kwargs,
-        )
+        fn_kwargs = {
+            "function_name": function_name,
+            "runtime": _lambda.Runtime.PYTHON_3_12,
+            "handler": handler,
+            "code": _lambda.Code.from_asset(entry_path),
+            "timeout": Duration.seconds(timeout_seconds),
+            "memory_size": memory_size,
+            "environment": environment or {},
+            "layers": layers or [],
+            "log_group": log_group,
+        }
+        if reserved_concurrent_executions is not None:
+            fn_kwargs["reserved_concurrent_executions"] = reserved_concurrent_executions
+        fn_kwargs.update(kwargs)
+
+        self.function = _lambda.Function(self, f"{id}Function", **fn_kwargs)
 
     def get_lambda_function(self) -> _lambda.Function:
         return self.function
