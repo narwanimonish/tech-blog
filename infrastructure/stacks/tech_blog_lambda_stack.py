@@ -11,9 +11,9 @@ from aws_cdk import aws_iam as iam
 from constructs import Construct
 from config.dev import DevConfig
 from config.prod import ProdConfig
-from constructs.dynamodb_table import DynamoDBTable
-from constructs.lambda_function import LambdaFunction
-from constructs.shared_layer import SharedLayer
+from services.dynamodb_table import DynamoDBTable
+from services.lambda_function import LambdaFunction
+from services.shared_layer import SharedLayer
 from lambda_config import get_lambda_settings
 
 from stacks.tech_blog_auth_stack import TechBlogAuthStack

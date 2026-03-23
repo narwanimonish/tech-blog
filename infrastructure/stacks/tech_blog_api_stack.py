@@ -12,8 +12,8 @@ from aws_cdk import aws_iam as iam
 from constructs import Construct
 from config.dev import DevConfig
 from config.prod import ProdConfig
-from constructs.lambda_function import LambdaFunction
-from constructs.rest_api_gateway import RestApiGateway
+from services.lambda_function import LambdaFunction
+from services.rest_api_gateway import RestApiGateway
 from lambda_config import get_lambda_settings
 
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
