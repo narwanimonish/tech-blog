@@ -1,13 +1,14 @@
 """
 Unit tests for UsersService (core logic only; DynamoDB is mocked).
 """
-import pytest
 
 from core.users.service import UsersService
 
 
 def test_get_user_returns_item(mock_table):
-    mock_table.get_item.return_value = {"Item": {"userId": "u1", "email": "a@b.com", "name": "Alice"}}
+    mock_table.get_item.return_value = {
+        "Item": {"userId": "u1", "email": "a@b.com", "name": "Alice"}
+    }
     svc = UsersService(mock_table)
     result = svc.get_user("u1")
     assert result == {"userId": "u1", "email": "a@b.com", "name": "Alice"}
@@ -22,7 +23,10 @@ def test_get_user_returns_none_when_missing(mock_table):
 
 
 def test_list_users_returns_all_items(mock_table):
-    mock_table.scan.return_value = {"Items": [{"userId": "u1"}, {"userId": "u2"}], "LastEvaluatedKey": None}
+    mock_table.scan.return_value = {
+        "Items": [{"userId": "u1"}, {"userId": "u2"}],
+        "LastEvaluatedKey": None,
+    }
     svc = UsersService(mock_table)
     result = svc.list_users()
     assert result == [{"userId": "u1"}, {"userId": "u2"}]
@@ -40,7 +44,10 @@ def test_update_user_calls_put_with_user_id(mock_table):
     assert call_item["email"] == "new@b.com"
 
 
+# only updates the attributes which are mentioned while calling update()
+
+
 def test_delete_user_calls_delete_item(mock_table):
     svc = UsersService(mock_table)
-    svc.delete_user("u1")
+    svc.delete_user("u1")  # wrong as u1 user is not present
     mock_table.delete_item.assert_called_once_with(Key={"userId": "u1"})
