@@ -31,9 +31,7 @@ def mock_service():
 def test_get_users_list_returns_200_and_items(mock_context, mock_service):
     mock_service.list_users.return_value = [{"userId": "u1", "email": "a@b.com"}]
     event = api_event("GET", "/users")
-    with patch.object(
-        users_module.role_util, "is_user_action_valid", return_value=(True, "")
-    ):
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
@@ -51,9 +49,7 @@ def test_get_user_by_id_returns_200_when_found(mock_context, mock_service):
     }
     event = api_event("GET", "/users/u1", path_params={"userId": "u1"})
     event["path"] = "/users/u1"
-    with patch.object(
-        users_module.role_util, "is_user_action_valid", return_value=(True, "")
-    ):
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
@@ -66,9 +62,7 @@ def test_get_user_by_id_returns_404_when_not_found(mock_context, mock_service):
     mock_service.get_user.return_value = None
     event = api_event("GET", "/users/u1", path_params={"userId": "u1"})
     event["path"] = "/users/u1"
-    with patch.object(
-        users_module.role_util, "is_user_action_valid", return_value=(True, "")
-    ):
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 404
@@ -90,26 +84,20 @@ def test_put_user_returns_200_and_updated_user(mock_context, mock_service):
         body={"email": "new@b.com", "name": "Alice"},
     )
     event["path"] = "/users/u1"
-    with patch.object(
-        users_module.role_util, "is_user_action_valid", return_value=(True, "")
-    ):
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert body["email"] == "new@b.com"
-    mock_service.update_user.assert_called_once_with(
-        "u1", {"email": "new@b.com", "name": "Alice"}
-    )
+    mock_service.update_user.assert_called_once_with("u1", {"email": "new@b.com", "name": "Alice"})
 
 
 def test_put_user_returns_400_when_body_missing(mock_context, mock_service):
     event = api_event("PUT", "/users/u1", path_params={"userId": "u1"}, body=None)
     event["body"] = None
     event["path"] = "/users/u1"
-    with patch.object(
-        users_module.role_util, "is_user_action_valid", return_value=(True, "")
-    ):
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 400
@@ -120,9 +108,7 @@ def test_put_user_returns_400_when_body_missing(mock_context, mock_service):
 def test_delete_user_returns_200(mock_context, mock_service):
     event = api_event("DELETE", "/users/u1", path_params={"userId": "u1"})
     event["path"] = "/users/u1"
-    with patch.object(
-        users_module.role_util, "is_user_action_valid", return_value=(True, "")
-    ):
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200

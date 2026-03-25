@@ -30,35 +30,27 @@ def lambda_handler(event, context):
 
     if not CLIENT_ID:
         LOGGER.error("auth_login missing USER_POOL_CLIENT_ID request_id=%s", request_id)
-        return simple_api_util.build_error_response(
-            "CONFIG_ERROR", "Missing USER_POOL_CLIENT_ID", 500, request_id=request_id
-        )
+        return simple_api_util.build_error_response("CONFIG_ERROR", "Missing USER_POOL_CLIENT_ID", 500, request_id=request_id)
 
     try:
         LOGGER.info("auth_login reading request body request_id=%s", request_id)
         body = event.get("body")
         if not body:
             LOGGER.warning("auth_login body missing request_id=%s", request_id)
-            return simple_api_util.build_error_response(
-                "BAD_REQUEST", "Body required", 400, request_id=request_id
-            )
+            return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
 
         try:
             LOGGER.info("auth_login parsing JSON body request_id=%s", request_id)
             data = json.loads(body)
         except json.JSONDecodeError:
             LOGGER.warning("auth_login invalid JSON request_id=%s", request_id)
-            return simple_api_util.build_error_response(
-                "BAD_REQUEST", "Invalid JSON", 400, request_id=request_id
-            )
+            return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
 
         LOGGER.info("auth_login validating payload request_id=%s", request_id)
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
         if not username or not password:
-            LOGGER.warning(
-                "auth_login missing username/password request_id=%s", request_id
-            )
+            LOGGER.warning("auth_login missing username/password request_id=%s", request_id)
             return simple_api_util.build_error_response(
                 "BAD_REQUEST",
                 "username and password are required",
@@ -108,9 +100,7 @@ def lambda_handler(event, context):
             json.dumps(auth),
         )
         _upsert_user_from_access_token(auth.get("AccessToken"), request_id)
-        LOGGER.info(
-            "auth_login success request_id=%s username=%s", request_id, username
-        )
+        LOGGER.info("auth_login success request_id=%s username=%s", request_id, username)
         return simple_api_util.build_response(
             200,
             {
@@ -123,26 +113,18 @@ def lambda_handler(event, context):
         )
     except COGNITO.exceptions.NotAuthorizedException:
         LOGGER.warning("auth_login invalid credentials request_id=%s", request_id)
-        return simple_api_util.build_error_response(
-            "UNAUTHORIZED", "Invalid username or password", 401, request_id=request_id
-        )
+        return simple_api_util.build_error_response("UNAUTHORIZED", "Invalid username or password", 401, request_id=request_id)
     except COGNITO.exceptions.UserNotConfirmedException:
         LOGGER.warning("auth_login user not confirmed request_id=%s", request_id)
-        return simple_api_util.build_error_response(
-            "USER_NOT_CONFIRMED", "User not confirmed", 403, request_id=request_id
-        )
+        return simple_api_util.build_error_response("USER_NOT_CONFIRMED", "User not confirmed", 403, request_id=request_id)
     except Exception as e:
-        LOGGER.exception(
-            "auth_login unexpected error request_id=%s error=%s", request_id, e
-        )
+        LOGGER.exception("auth_login unexpected error request_id=%s error=%s", request_id, e)
         return simple_api_util.build_error_from_exception(e, request_id=request_id)
 
 
 def _upsert_user_from_access_token(access_token, request_id):
     if not access_token:
-        LOGGER.warning(
-            "auth_login skip user upsert: no access token request_id=%s", request_id
-        )
+        LOGGER.warning("auth_login skip user upsert: no access token request_id=%s", request_id)
         return
     if not SERVICE:
         LOGGER.warning(
@@ -152,26 +134,18 @@ def _upsert_user_from_access_token(access_token, request_id):
         return
 
     try:
-        LOGGER.info(
-            "auth_login fetching user profile from Cognito request_id=%s", request_id
-        )
+        LOGGER.info("auth_login fetching user profile from Cognito request_id=%s", request_id)
         resp = COGNITO.get_user(AccessToken=access_token)
         attrs = {a.get("Name"): a.get("Value") for a in resp.get("UserAttributes", [])}
         user_id = attrs.get("sub")
         if not user_id:
-            LOGGER.warning(
-                "auth_login skip user upsert: missing sub request_id=%s", request_id
-            )
+            LOGGER.warning("auth_login skip user upsert: missing sub request_id=%s", request_id)
             return
 
         # Preserve existing role when upserting (get existing user first)
         existing = SERVICE.get_user(user_id) or {}
         data = {"email": attrs.get("email", "")}
-        name = (
-            attrs.get("name")
-            or attrs.get("given_name")
-            or attrs.get("preferred_username")
-        )
+        name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username")
         if name:
             data["name"] = name
         data["role"] = existing.get("role", "reader")
@@ -183,6 +157,4 @@ def _upsert_user_from_access_token(access_token, request_id):
             user_id,
         )
     except Exception as e:
-        LOGGER.exception(
-            "auth_login failed to upsert user request_id=%s error=%s", request_id, e
-        )
+        LOGGER.exception("auth_login failed to upsert user request_id=%s error=%s", request_id, e)

@@ -24,15 +24,11 @@ def lambda_handler(event, context):
 
     token = _get_token(event)
     if not token:
-        LOGGER.warning(
-            "authorizer missing/invalid bearer token request_id=%s", request_id
-        )
+        LOGGER.warning("authorizer missing/invalid bearer token request_id=%s", request_id)
         return _deny(event, "Unauthorized", "Missing or invalid Authorization")
 
     try:
-        LOGGER.info(
-            "authorizer validating token with Cognito request_id=%s", request_id
-        )
+        LOGGER.info("authorizer validating token with Cognito request_id=%s", request_id)
         resp = COGNITO.get_user(AccessToken=token)
         principal_id = next(
             (a["Value"] for a in resp.get("UserAttributes", []) if a["Name"] == "sub"),
@@ -47,22 +43,16 @@ def lambda_handler(event, context):
         )
         return _allow(event, principal_id, ctx)
     except COGNITO.exceptions.NotAuthorizedException as e:
-        LOGGER.warning(
-            "authorizer token invalid/expired request_id=%s error=%s", request_id, e
-        )
+        LOGGER.warning("authorizer token invalid/expired request_id=%s error=%s", request_id, e)
         return _deny(event, "Unauthorized", "Invalid or expired token")
     except Exception as e:
-        LOGGER.exception(
-            "authorizer unexpected error request_id=%s error=%s", request_id, e
-        )
+        LOGGER.exception("authorizer unexpected error request_id=%s error=%s", request_id, e)
         return _deny(event, "Unauthorized", "Authorization failed")
 
 
 def _get_token(event):
     LOGGER.info("authorizer extracting Authorization header")
-    auth = (event.get("headers") or {}).get("Authorization") or (
-        event.get("headers") or {}
-    ).get("authorization")
+    auth = (event.get("headers") or {}).get("Authorization") or (event.get("headers") or {}).get("authorization")
     if not auth or not auth.startswith("Bearer "):
         LOGGER.warning("authorizer Authorization header missing or malformed")
         return None

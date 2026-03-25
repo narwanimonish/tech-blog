@@ -6,9 +6,7 @@ from core.users.service import UsersService
 
 
 def test_get_user_returns_item(mock_table):
-    mock_table.get_item.return_value = {
-        "Item": {"userId": "u1", "email": "a@b.com", "name": "Alice"}
-    }
+    mock_table.get_item.return_value = {"Item": {"userId": "u1", "email": "a@b.com", "name": "Alice"}}
     svc = UsersService(mock_table)
     result = svc.get_user("u1")
     assert result == {"userId": "u1", "email": "a@b.com", "name": "Alice"}

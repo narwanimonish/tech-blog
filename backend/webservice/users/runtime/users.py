@@ -30,9 +30,7 @@ def lambda_handler(event, context):
 
     allowed, rbac_message = role_util.is_user_action_valid(event)
     if not allowed:
-        return simple_api_util.build_error_response(
-            "FORBIDDEN", rbac_message or "Forbidden", 403, request_id=request_id
-        )
+        return simple_api_util.build_error_response("FORBIDDEN", rbac_message or "Forbidden", 403, request_id=request_id)
 
     try:
         if method == "GET" and not user_id:
@@ -42,26 +40,18 @@ def lambda_handler(event, context):
         if method == "GET" and user_id:
             item = SERVICE.get_user(user_id)
             if not item:
-                return simple_api_util.build_error_response(
-                    "NOT_FOUND", "User not found", 404, request_id=request_id
-                )
+                return simple_api_util.build_error_response("NOT_FOUND", "User not found", 404, request_id=request_id)
             return simple_api_util.build_response(200, item)
 
         if method == "PUT" and user_id:
             body = event.get("body")
             if not body:
-                return simple_api_util.build_error_response(
-                    "BAD_REQUEST", "Body required", 400, request_id=request_id
-                )
+                return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
             try:
                 data = json.loads(body)
             except json.JSONDecodeError:
-                return simple_api_util.build_error_response(
-                    "BAD_REQUEST", "Invalid JSON", 400, request_id=request_id
-                )
-            return simple_api_util.build_response(
-                200, SERVICE.update_user(user_id, data)
-            )
+                return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
+            return simple_api_util.build_response(200, SERVICE.update_user(user_id, data))
 
         if method == "DELETE" and user_id:
             SERVICE.delete_user(user_id)

@@ -22,12 +22,9 @@ def api_event(
         "httpMethod": method,
         "path": path,
         "requestContext": {
-            "authorizer": authorizer
-            or {"sub": "user-123", "email": "test@example.com"},
+            "authorizer": authorizer or {"sub": "user-123", "email": "test@example.com"},
             "path": path,
         },
         "pathParameters": path_params or {},
-        "body": json.dumps(body)
-        if body is not None and isinstance(body, dict)
-        else body,
+        "body": json.dumps(body) if body is not None and isinstance(body, dict) else body,
     }

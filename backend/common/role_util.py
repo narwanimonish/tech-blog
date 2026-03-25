@@ -51,9 +51,7 @@ def _get_service_level_config() -> dict:
     return data.get("services", {})
 
 
-def _get_dependencies_for_level(
-    services_config: dict, service: str, level: str
-) -> list[str]:
+def _get_dependencies_for_level(services_config: dict, service: str, level: str) -> list[str]:
     """
     Return the dependency list for a service.level from service_level_permissions.
     Supports both 'dependancies' and 'dependencies' keys.
@@ -113,14 +111,9 @@ def _get_required_permissions(path: str, method: str) -> list[str]:
     normalized = _normalize_path(path)
     apis = _get_api_permissions_config()
     for api in apis:
-        if (
-            api.get("path") == normalized
-            and (api.get("method") or "").upper() == (method or "").upper()
-        ):
+        if api.get("path") == normalized and (api.get("method") or "").upper() == (method or "").upper():
             return api.get("permissions", [])
-    LOGGER.warning(
-        "No API permission rule for %s %s (normalized %s)", method, path, normalized
-    )
+    LOGGER.warning("No API permission rule for %s %s (normalized %s)", method, path, normalized)
     return []
 
 
@@ -161,12 +154,7 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     Returns (allowed: bool, error_message: str). If allowed, error_message is empty.
     """
     # API Gateway proxy: path is the actual request path (e.g. /users/abc-123)
-    path = (
-        event.get("path")
-        or event.get("requestContext", {}).get("path")
-        or event.get("resource")
-        or ""
-    ).strip()
+    path = (event.get("path") or event.get("requestContext", {}).get("path") or event.get("resource") or "").strip()
     method = (event.get("httpMethod") or "").upper()
     authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
     sub = user_id or authorizer.get("sub") or authorizer.get("principalId") or ""
