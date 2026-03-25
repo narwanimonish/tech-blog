@@ -13,9 +13,7 @@ import logging
 import os
 
 import boto3
-
-from common import role_util
-from common import simple_api_util
+from common import role_util, simple_api_util
 from core.posts.service import PostsService
 
 LOGGER = logging.getLogger()

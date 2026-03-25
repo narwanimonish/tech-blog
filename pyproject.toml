@@ -13,7 +13,7 @@ exclude = [
 ]
 
 # Set the maximum line length
-line-length = 88
+line-length = 130
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`), pycodestyle (`E`, `W`), and isort (`I`)

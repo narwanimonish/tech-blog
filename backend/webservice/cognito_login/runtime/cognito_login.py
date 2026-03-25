@@ -10,7 +10,6 @@ import logging
 import os
 
 import boto3
-
 from common import simple_api_util
 from core.users.service import UsersService
 

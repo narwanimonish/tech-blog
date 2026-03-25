@@ -8,7 +8,6 @@ import json
 from dataclasses import dataclass
 
 from botocore.exceptions import ClientError
-
 from common.errors import AppError
 
 

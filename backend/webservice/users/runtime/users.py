@@ -12,7 +12,6 @@ import logging
 import os
 
 import boto3
-
 from common import role_util, simple_api_util
 from core.users.service import UsersService
 
