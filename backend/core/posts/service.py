@@ -2,6 +2,7 @@
 Posts domain service: CRUD for posts. Uses common.dynamodb_util.
 Expects table with partition key postId.
 """
+
 import logging
 import uuid
 from datetime import datetime, timezone

@@ -12,6 +12,7 @@ Lambda Layer mounts this at /opt, so "from common import ..." and
 Also removes any existing common/ and core/ from webservice/* so each
 Lambda asset contains only the handler (runtime/).
 """
+
 import shutil
 from pathlib import Path
 
@@ -31,8 +32,12 @@ def main():
     if LAYER_BUNDLE.exists():
         shutil.rmtree(LAYER_BUNDLE)
     PYTHON.mkdir(parents=True)
-    shutil.copytree(COMMON, PYTHON / "common", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    shutil.copytree(CORE, PYTHON / "core", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    shutil.copytree(
+        COMMON, PYTHON / "common", ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
+    )
+    shutil.copytree(
+        CORE, PYTHON / "core", ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
+    )
     print("Built layer_bundle/python/{common,core}")
 
     # Remove copied common/core from each webservice folder (they use the layer now)

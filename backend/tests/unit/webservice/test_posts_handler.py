@@ -2,6 +2,7 @@
 Unit tests for the posts Lambda handler (API behaviour with mocked SERVICE and RBAC).
 Handler is loaded from webservice/posts/runtime/posts.py.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,9 +30,13 @@ def mock_service():
 
 
 def test_get_posts_list_returns_200_and_items(mock_context, mock_service):
-    mock_service.list_posts.return_value = [{"postId": "p1", "title": "Hi", "body": "World"}]
+    mock_service.list_posts.return_value = [
+        {"postId": "p1", "title": "Hi", "body": "World"}
+    ]
     event = api_event("GET", "/posts")
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
@@ -41,10 +46,16 @@ def test_get_posts_list_returns_200_and_items(mock_context, mock_service):
 
 
 def test_get_post_by_id_returns_200_when_found(mock_context, mock_service):
-    mock_service.get_post.return_value = {"postId": "p1", "title": "Hi", "body": "World"}
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "title": "Hi",
+        "body": "World",
+    }
     event = api_event("GET", "/posts/p1", path_params={"postId": "p1"})
     event["path"] = "/posts/p1"
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
@@ -56,7 +67,9 @@ def test_get_post_by_id_returns_404_when_not_found(mock_context, mock_service):
     mock_service.get_post.return_value = None
     event = api_event("GET", "/posts/p1", path_params={"postId": "p1"})
     event["path"] = "/posts/p1"
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 404
@@ -64,10 +77,24 @@ def test_get_post_by_id_returns_404_when_not_found(mock_context, mock_service):
     assert body.get("errorCode") == "NOT_FOUND"
 
 
-def test_post_posts_returns_200_and_calls_create_with_creator_email(mock_context, mock_service):
-    mock_service.create_post.return_value = {"postId": "pid-123", "title": "Hi", "body": "World", "created_by": "author@example.com"}
-    event = api_event("POST", "/posts", body={"title": "Hi", "body": "World"}, authorizer={"sub": "u1", "email": "author@example.com"})
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+def test_post_posts_returns_200_and_calls_create_with_creator_email(
+    mock_context, mock_service
+):
+    mock_service.create_post.return_value = {
+        "postId": "pid-123",
+        "title": "Hi",
+        "body": "World",
+        "created_by": "author@example.com",
+    }
+    event = api_event(
+        "POST",
+        "/posts",
+        body={"title": "Hi", "body": "World"},
+        authorizer={"sub": "u1", "email": "author@example.com"},
+    )
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
@@ -78,20 +105,35 @@ def test_post_posts_returns_200_and_calls_create_with_creator_email(mock_context
 
 
 def test_put_post_returns_200(mock_context, mock_service):
-    mock_service.update_post.return_value = {"postId": "p1", "title": "New", "body": "New"}
-    event = api_event("PUT", "/posts/p1", path_params={"postId": "p1"}, body={"title": "New", "body": "New"})
+    mock_service.update_post.return_value = {
+        "postId": "p1",
+        "title": "New",
+        "body": "New",
+    }
+    event = api_event(
+        "PUT",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        body={"title": "New", "body": "New"},
+    )
     event["path"] = "/posts/p1"
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
-    mock_service.update_post.assert_called_once_with("p1", {"title": "New", "body": "New"})
+    mock_service.update_post.assert_called_once_with(
+        "p1", {"title": "New", "body": "New"}
+    )
 
 
 def test_delete_post_returns_200(mock_context, mock_service):
     event = api_event("DELETE", "/posts/p1", path_params={"postId": "p1"})
     event["path"] = "/posts/p1"
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
@@ -101,7 +143,9 @@ def test_delete_post_returns_200(mock_context, mock_service):
 def test_post_posts_returns_400_when_body_invalid_json(mock_context, mock_service):
     event = api_event("POST", "/posts", body=None)
     event["body"] = "not json"
-    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+    with patch.object(
+        posts_module.role_util, "is_user_action_valid", return_value=(True, "")
+    ):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 400

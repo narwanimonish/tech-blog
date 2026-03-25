@@ -7,6 +7,7 @@ Routes:
 - PUT /posts/{postId}
 - DELETE /posts/{postId}
 """
+
 import json
 import logging
 import os
@@ -50,28 +51,42 @@ def lambda_handler(event, context):
         if method == "POST" and not post_id:
             body = event.get("body")
             if not body:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
+                return simple_api_util.build_error_response(
+                    "BAD_REQUEST", "Body required", 400, request_id=request_id
+                )
             try:
                 data = json.loads(body)
             except json.JSONDecodeError:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            return simple_api_util.build_response(200, SERVICE.create_post(data, created_by=_creator_email(event)))
+                return simple_api_util.build_error_response(
+                    "BAD_REQUEST", "Invalid JSON", 400, request_id=request_id
+                )
+            return simple_api_util.build_response(
+                200, SERVICE.create_post(data, created_by=_creator_email(event))
+            )
 
         if method == "GET" and post_id:
             item = SERVICE.get_post(post_id)
             if not item:
-                return simple_api_util.build_error_response("NOT_FOUND", "Post not found", 404, request_id=request_id)
+                return simple_api_util.build_error_response(
+                    "NOT_FOUND", "Post not found", 404, request_id=request_id
+                )
             return simple_api_util.build_response(200, item)
 
         if method == "PUT" and post_id:
             body = event.get("body")
             if not body:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
+                return simple_api_util.build_error_response(
+                    "BAD_REQUEST", "Body required", 400, request_id=request_id
+                )
             try:
                 data = json.loads(body)
             except json.JSONDecodeError:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            return simple_api_util.build_response(200, SERVICE.update_post(post_id, data))
+                return simple_api_util.build_error_response(
+                    "BAD_REQUEST", "Invalid JSON", 400, request_id=request_id
+                )
+            return simple_api_util.build_response(
+                200, SERVICE.update_post(post_id, data)
+            )
 
         if method == "DELETE" and post_id:
             SERVICE.delete_post(post_id)

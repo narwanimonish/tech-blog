@@ -4,6 +4,7 @@ Validates that the authenticated user's role has the permissions required for th
 Uses: service_level_permissions.json, consolidated_api_permissions.json, role_permissions.json.
 User role is read from DynamoDB users table (field "role"); default role is "reader" if missing.
 """
+
 from __future__ import annotations
 
 import json
@@ -50,13 +51,15 @@ def _get_service_level_config() -> dict:
     return data.get("services", {})
 
 
-def _get_dependencies_for_level(services_config: dict, service: str, level: str) -> list[str]:
+def _get_dependencies_for_level(
+    services_config: dict, service: str, level: str
+) -> list[str]:
     """
     Return the dependency list for a service.level from service_level_permissions.
     Supports both 'dependancies' and 'dependencies' keys.
     """
     level = (level or "").lower()
-    svc = (services_config.get(service) or {})
+    svc = services_config.get(service) or {}
     level_config = svc.get(level) or {}
     deps = level_config.get("dependancies") or level_config.get("dependencies") or []
     return list(deps) if isinstance(deps, list) else []
@@ -110,9 +113,14 @@ def _get_required_permissions(path: str, method: str) -> list[str]:
     normalized = _normalize_path(path)
     apis = _get_api_permissions_config()
     for api in apis:
-        if api.get("path") == normalized and (api.get("method") or "").upper() == (method or "").upper():
+        if (
+            api.get("path") == normalized
+            and (api.get("method") or "").upper() == (method or "").upper()
+        ):
             return api.get("permissions", [])
-    LOGGER.warning("No API permission rule for %s %s (normalized %s)", method, path, normalized)
+    LOGGER.warning(
+        "No API permission rule for %s %s (normalized %s)", method, path, normalized
+    )
     return []
 
 
@@ -153,7 +161,12 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     Returns (allowed: bool, error_message: str). If allowed, error_message is empty.
     """
     # API Gateway proxy: path is the actual request path (e.g. /users/abc-123)
-    path = (event.get("path") or event.get("requestContext", {}).get("path") or event.get("resource") or "").strip()
+    path = (
+        event.get("path")
+        or event.get("requestContext", {}).get("path")
+        or event.get("resource")
+        or ""
+    ).strip()
     method = (event.get("httpMethod") or "").upper()
     authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
     sub = user_id or authorizer.get("sub") or authorizer.get("principalId") or ""
@@ -174,8 +187,14 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
 
     for perm in required:
         if not _role_has_permission(role_perms, perm):
-            LOGGER.info("RBAC denied: user %s role %s lacks %s for %s %s", sub, role, perm, method, path)
+            LOGGER.info(
+                "RBAC denied: user %s role %s lacks %s for %s %s",
+                sub,
+                role,
+                perm,
+                method,
+                path,
+            )
             return False, f"Insufficient permission: requires {perm}"
 
     return True, ""
-

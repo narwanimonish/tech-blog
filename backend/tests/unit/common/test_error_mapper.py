@@ -1,6 +1,7 @@
 """
 Unit tests for common.error_mapper (exception → FrontendError).
 """
+
 import json
 
 import pytest
@@ -11,7 +12,12 @@ from common.error_mapper import map_exception, FrontendError
 
 
 def test_app_error_maps_to_frontend_error():
-    exc = AppError("VALIDATION_FAILED", "Invalid field", status_code=400, details={"field": "email"})
+    exc = AppError(
+        "VALIDATION_FAILED",
+        "Invalid field",
+        status_code=400,
+        details={"field": "email"},
+    )
     result = map_exception(exc)
     assert result.code == "VALIDATION_FAILED"
     assert result.message == "Invalid field"
@@ -34,7 +40,12 @@ def test_value_error_maps_to_bad_request():
 
 
 def test_client_error_resource_not_found_maps_to_not_found():
-    resp = {"Error": {"Code": "ResourceNotFoundException", "Message": "Requested resource not found"}}
+    resp = {
+        "Error": {
+            "Code": "ResourceNotFoundException",
+            "Message": "Requested resource not found",
+        }
+    }
     exc = ClientError(resp, "GetItem")
     result = map_exception(exc)
     assert result.code == "NOT_FOUND"

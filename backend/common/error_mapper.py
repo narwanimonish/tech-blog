@@ -1,6 +1,7 @@
 """
 Maps backend exceptions to frontend error codes and HTTP status.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,9 @@ _CLIENT_ERROR_MAP = {
 }
 
 
-def map_exception(exc: Exception, default_message: str = "Internal server error") -> FrontendError:
+def map_exception(
+    exc: Exception, default_message: str = "Internal server error"
+) -> FrontendError:
     """
     Convert an exception into a frontend-safe error object.
     """

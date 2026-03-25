@@ -2,6 +2,7 @@
 DynamoDB helpers for simple CRUD operations.
 Accepts a boto3 DynamoDB Table resource (e.g. dynamodb_resource.Table(name)).
 """
+
 import logging
 
 LOGGER = logging.getLogger(__name__)

@@ -2,6 +2,7 @@
 Simple API response helpers for Lambda + API Gateway.
 Use for basic REST APIs that return JSON with CORS.
 """
+
 import json
 
 from common.error_mapper import map_exception
@@ -40,7 +41,9 @@ def build_error_response(code, message, status_code, details=None, request_id=No
     return build_response(status_code, body)
 
 
-def build_error_from_exception(exc, default_message="Internal server error", request_id=None):
+def build_error_from_exception(
+    exc, default_message="Internal server error", request_id=None
+):
     mapped = map_exception(exc, default_message=default_message)
     return build_error_response(
         code=mapped.code,
