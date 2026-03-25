@@ -4,11 +4,9 @@ Unit tests for common.error_mapper (exception → FrontendError).
 
 import json
 
-import pytest
 from botocore.exceptions import ClientError
-
+from common.error_mapper import map_exception
 from common.errors import AppError
-from common.error_mapper import map_exception, FrontendError
 
 
 def test_app_error_maps_to_frontend_error():
