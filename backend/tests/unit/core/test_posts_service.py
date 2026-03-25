@@ -4,8 +4,6 @@ Unit tests for PostsService (core logic only; DynamoDB is mocked).
 
 import re
 
-import pytest
-
 from core.posts.service import PostsService
 
 
@@ -73,7 +71,7 @@ def test_update_post_allows_overriding_creation_fields(mock_table):
         "Item": {"postId": "p1", "creation_time": "old", "created_by": "old"}
     }
     svc = PostsService(mock_table)
-    result = svc.update_post("p1", {"creation_time": "new", "created_by": "new@x.com"})
+    svc.update_post("p1", {"creation_time": "new", "created_by": "new@x.com"})
     call_item = mock_table.put_item.call_args[1]["Item"]
     assert call_item["creation_time"] == "new"
     assert call_item["created_by"] == "new@x.com"
