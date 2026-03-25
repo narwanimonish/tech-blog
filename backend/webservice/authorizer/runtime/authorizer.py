@@ -3,7 +3,6 @@ Custom Lambda authorizer for API Gateway.
 Validates Cognito Access Token via GetUser; returns IAM policy allow/deny.
 Expects env: USER_POOL_REGION (e.g. us-east-1). Token from Authorization: Bearer <access_token>.
 """
-import json
 import logging
 import os
 
