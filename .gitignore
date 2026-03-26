@@ -12,7 +12,7 @@
 .env
 
 # Backend build output (Lambda Layer bundle)
-backend/layer_bundle/
+# backend/layer_bundle/
 
 # Testing & Coverage Reports
 .pytest_cache/
