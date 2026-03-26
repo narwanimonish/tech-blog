@@ -1,5 +1,6 @@
 # Tech Blog Backend – Repository Structure
 
+
 **Tech Blog Backend** – REST API over AWS Lambda + API Gateway (Python 3.12, DynamoDB). Handler + service layout per module.
 
 ---
