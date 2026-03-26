@@ -4,6 +4,7 @@ writes the user into the DynamoDB users table so the app has a single source of 
 Only runs on PostConfirmation_ConfirmSignUp (not on password reset confirmation).
 Uses boto3 only (no shared layer) so this Lambda can live in the Auth stack.
 """
+
 import logging
 import os
 

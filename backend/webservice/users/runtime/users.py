@@ -6,14 +6,13 @@ Routes:
 - PUT /users/{userId}
 - DELETE /users/{userId}
 """
+
 import json
 import logging
 import os
 
 import boto3
-
-from common import role_util
-from common import simple_api_util
+from common import role_util, simple_api_util
 from core.users.service import UsersService
 
 LOGGER = logging.getLogger()
@@ -31,9 +30,7 @@ def lambda_handler(event, context):
 
     allowed, rbac_message = role_util.is_user_action_valid(event)
     if not allowed:
-        return simple_api_util.build_error_response(
-            "FORBIDDEN", rbac_message or "Forbidden", 403, request_id=request_id
-        )
+        return simple_api_util.build_error_response("FORBIDDEN", rbac_message or "Forbidden", 403, request_id=request_id)
 
     try:
         if method == "GET" and not user_id:

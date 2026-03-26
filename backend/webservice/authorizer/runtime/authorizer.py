@@ -3,7 +3,7 @@ Custom Lambda authorizer for API Gateway.
 Validates Cognito Access Token via GetUser; returns IAM policy allow/deny.
 Expects env: USER_POOL_REGION (e.g. us-east-1). Token from Authorization: Bearer <access_token>.
 """
-import json
+
 import logging
 import os
 
@@ -65,7 +65,11 @@ def _allow(event, principal_id, context_attrs=None):
     method_arn = event.get("methodArn") or ""
     # Allow invoke on this method (and optionally stage/path)
     resource = _resource_arn(method_arn)
-    LOGGER.info("authorizer building allow policy principalId=%s resource=%s", principal_id, resource)
+    LOGGER.info(
+        "authorizer building allow policy principalId=%s resource=%s",
+        principal_id,
+        resource,
+    )
     return {
         "principalId": principal_id,
         "policyDocument": {
@@ -85,7 +89,12 @@ def _allow(event, principal_id, context_attrs=None):
 def _deny(event, principal_id, reason):
     method_arn = event.get("methodArn") or ""
     resource = _resource_arn(method_arn)
-    LOGGER.warning("authorizer building deny policy principalId=%s resource=%s reason=%s", principal_id, resource, reason)
+    LOGGER.warning(
+        "authorizer building deny policy principalId=%s resource=%s reason=%s",
+        principal_id,
+        resource,
+        reason,
+    )
     return {
         "principalId": principal_id,
         "policyDocument": {

@@ -161,3 +161,23 @@ To add production callback URLs for Cognito, edit `constructs/cognito_auth.py` (
 ## 8. Environment
 
 - **APP_ENV**: `dev` (default) or `prod`. Table and API names are prefixed with `config.APP_NAME` (`tech-blog`).
+
+## 9. Troubleshooting
+
+### `LogGroup` already exists (`/aws/lambda/<function-name>`)
+
+CloudFormation fails early validation when it tries to **create** a log group that **already exists** in CloudWatch Logs. Common causes:
+
+- The Lambda ran once and **AWS created** `/aws/lambda/<name>` automatically (not yet owned by this stack).
+- A previous stack was deleted but the log groups were **retained** or left behind.
+- You switched CDK from an explicit `LogGroup` to another pattern while the old group still exists.
+
+**Fix:** Delete the conflicting log groups (you lose their log history), then redeploy `TechBlogAuthStack` (or the stack that failed):
+
+```bash
+# Replace names if your APP_NAME differs (default app name is often tech-blog)
+aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-confirmation"
+aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-authentication"
+```
+
+If other Lambdas hit the same error, delete `/aws/lambda/<exact-function-name>` from the error message, then `cdk deploy` again.

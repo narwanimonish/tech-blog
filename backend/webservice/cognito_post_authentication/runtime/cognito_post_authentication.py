@@ -4,6 +4,7 @@ Runs after successful user authentication and logs a login audit record.
 
 Important: Cognito trigger events do not include access/id/refresh tokens.
 """
+
 import json
 import logging
 

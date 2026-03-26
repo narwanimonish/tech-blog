@@ -6,7 +6,7 @@ from aws_cdk import CfnOutput, Stack
 from constructs import Construct
 from config.dev import DevConfig
 from config.prod import ProdConfig
-from constructs.dynamodb_table import DynamoDBTable
+from services.dynamodb_table import DynamoDBTable
 
 
 class TechBlogDataStack(Stack):

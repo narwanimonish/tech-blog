@@ -13,8 +13,8 @@ from aws_cdk import aws_cognito as cognito
 from constructs import Construct
 from config.dev import DevConfig
 from config.prod import ProdConfig
-from constructs.cognito_auth import CognitoAuth
-from constructs.lambda_function import LambdaFunction
+from services.cognito_auth import CognitoAuth
+from services.lambda_function import LambdaFunction
 from lambda_config import get_lambda_settings
 
 from stacks.tech_blog_data_stack import TechBlogDataStack

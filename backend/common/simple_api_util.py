@@ -2,6 +2,7 @@
 Simple API response helpers for Lambda + API Gateway.
 Use for basic REST APIs that return JSON with CORS.
 """
+
 import json
 
 from common.error_mapper import map_exception

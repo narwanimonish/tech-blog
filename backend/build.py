@@ -12,6 +12,7 @@ Lambda Layer mounts this at /opt, so "from common import ..." and
 Also removes any existing common/ and core/ from webservice/* so each
 Lambda asset contains only the handler (runtime/).
 """
+
 import shutil
 from pathlib import Path
 

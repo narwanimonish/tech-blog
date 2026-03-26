@@ -1,9 +1,8 @@
 """
 Unit tests for PostsService (core logic only; DynamoDB is mocked).
 """
-import re
 
-import pytest
+import re
 
 from core.posts.service import PostsService
 
@@ -66,7 +65,7 @@ def test_update_post_preserves_creation_time_and_created_by(mock_table):
 def test_update_post_allows_overriding_creation_fields(mock_table):
     mock_table.get_item.return_value = {"Item": {"postId": "p1", "creation_time": "old", "created_by": "old"}}
     svc = PostsService(mock_table)
-    result = svc.update_post("p1", {"creation_time": "new", "created_by": "new@x.com"})
+    svc.update_post("p1", {"creation_time": "new", "created_by": "new@x.com"})
     call_item = mock_table.put_item.call_args[1]["Item"]
     assert call_item["creation_time"] == "new"
     assert call_item["created_by"] == "new@x.com"
@@ -79,6 +78,9 @@ def test_delete_post_calls_delete_item(mock_table):
 
 
 def test_list_posts_returns_scan_result(mock_table):
-    mock_table.scan.return_value = {"Items": [{"postId": "p1"}], "LastEvaluatedKey": None}
+    mock_table.scan.return_value = {
+        "Items": [{"postId": "p1"}],
+        "LastEvaluatedKey": None,
+    }
     svc = PostsService(mock_table)
     assert svc.list_posts() == [{"postId": "p1"}]

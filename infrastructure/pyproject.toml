@@ -35,7 +35,7 @@ combine-as-imports = true
 force-single-line = false
 
 [tool.pyright]
-include = ["app.py", "constructs", "config", "stacks"]
+include = ["app.py", "services", "config", "stacks"]
 exclude = [
     "tests",
     ".venv",

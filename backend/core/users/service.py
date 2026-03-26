@@ -2,6 +2,7 @@
 Users domain service: CRUD for users. Uses common.dynamodb_util.
 Expects table with partition key userId.
 """
+
 import logging
 
 from common import dynamodb_util

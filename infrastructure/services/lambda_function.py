@@ -1,4 +1,3 @@
-import aws_cdk as cdk
 from aws_cdk import (
     Duration,
     aws_lambda as _lambda,
@@ -25,15 +24,9 @@ class LambdaFunction(Construct):
     ):
         super().__init__(scope, id)
 
-        log_group = logs.LogGroup(
-            self,
-            f"{function_name}LogGroup",
-            log_group_name=f"/aws/lambda/{function_name}",
-            retention=logs.RetentionDays.ONE_WEEK,  # Set your desired retention
-            removal_policy=cdk.RemovalPolicy.DESTROY,  # Optional: policy when stack is destroyed
-        )
-
-        fn_kwargs = {
+        # log_retention on Function lets CDK own the log group; avoids "LogGroup already exists"
+        # when a group was auto-created before the stack claimed it.
+        fn_kwargs: dict = {
             "function_name": function_name,
             "runtime": _lambda.Runtime.PYTHON_3_12,
             "handler": handler,
@@ -42,7 +35,7 @@ class LambdaFunction(Construct):
             "memory_size": memory_size,
             "environment": environment or {},
             "layers": layers or [],
-            "log_group": log_group,
+            "log_retention": logs.RetentionDays.ONE_WEEK,
         }
         if reserved_concurrent_executions is not None:
             fn_kwargs["reserved_concurrent_executions"] = reserved_concurrent_executions

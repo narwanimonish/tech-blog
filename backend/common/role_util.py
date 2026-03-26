@@ -4,6 +4,7 @@ Validates that the authenticated user's role has the permissions required for th
 Uses: service_level_permissions.json, consolidated_api_permissions.json, role_permissions.json.
 User role is read from DynamoDB users table (field "role"); default role is "reader" if missing.
 """
+
 from __future__ import annotations
 
 import json
@@ -56,7 +57,7 @@ def _get_dependencies_for_level(services_config: dict, service: str, level: str)
     Supports both 'dependancies' and 'dependencies' keys.
     """
     level = (level or "").lower()
-    svc = (services_config.get(service) or {})
+    svc = services_config.get(service) or {}
     level_config = svc.get(level) or {}
     deps = level_config.get("dependancies") or level_config.get("dependencies") or []
     return list(deps) if isinstance(deps, list) else []
@@ -174,8 +175,14 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
 
     for perm in required:
         if not _role_has_permission(role_perms, perm):
-            LOGGER.info("RBAC denied: user %s role %s lacks %s for %s %s", sub, role, perm, method, path)
+            LOGGER.info(
+                "RBAC denied: user %s role %s lacks %s for %s %s",
+                sub,
+                role,
+                perm,
+                method,
+                path,
+            )
             return False, f"Insufficient permission: requires {perm}"
 
     return True, ""
-

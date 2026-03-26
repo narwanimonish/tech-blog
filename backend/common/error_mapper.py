@@ -1,13 +1,13 @@
 """
 Maps backend exceptions to frontend error codes and HTTP status.
 """
+
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
 
 from botocore.exceptions import ClientError
-
 from common.errors import AppError
 
 

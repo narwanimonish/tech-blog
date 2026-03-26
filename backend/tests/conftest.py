@@ -3,6 +3,7 @@ Shared pytest fixtures for backend unit tests.
 Run from repo root: PYTHONPATH=backend pytest backend/tests -v
 Or from backend: PYTHONPATH=. pytest tests -v
 """
+
 from __future__ import annotations
 
 import json

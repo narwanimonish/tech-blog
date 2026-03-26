@@ -4,12 +4,12 @@ Authenticate against Cognito and return tokens.
 
 Warning: this handler intentionally logs full token payload as requested.
 """
+
 import json
 import logging
 import os
 
 import boto3
-
 from common import simple_api_util
 from core.users.service import UsersService
 
@@ -51,9 +51,18 @@ def lambda_handler(event, context):
         password = data.get("password") or ""
         if not username or not password:
             LOGGER.warning("auth_login missing username/password request_id=%s", request_id)
-            return simple_api_util.build_error_response("BAD_REQUEST", "username and password are required", 400, request_id=request_id)
+            return simple_api_util.build_error_response(
+                "BAD_REQUEST",
+                "username and password are required",
+                400,
+                request_id=request_id,
+            )
 
-        LOGGER.info("auth_login initiating Cognito auth request_id=%s username=%s", request_id, username)
+        LOGGER.info(
+            "auth_login initiating Cognito auth request_id=%s username=%s",
+            request_id,
+            username,
+        )
         resp = COGNITO.initiate_auth(
             ClientId=CLIENT_ID,
             AuthFlow="USER_PASSWORD_AUTH",
@@ -62,11 +71,19 @@ def lambda_handler(event, context):
                 "PASSWORD": password,
             },
         )
-        LOGGER.info("auth_login Cognito auth returned request_id=%s username=%s", request_id, username)
+        LOGGER.info(
+            "auth_login Cognito auth returned request_id=%s username=%s",
+            request_id,
+            username,
+        )
 
         auth = resp.get("AuthenticationResult") or {}
         if not auth:
-            LOGGER.warning("auth_login challenge required request_id=%s username=%s", request_id, username)
+            LOGGER.warning(
+                "auth_login challenge required request_id=%s username=%s",
+                request_id,
+                username,
+            )
             return simple_api_util.build_error_response(
                 "AUTH_CHALLENGE_REQUIRED",
                 "Authentication challenge required",
@@ -76,7 +93,12 @@ def lambda_handler(event, context):
             )
 
         # Intentional full token logging per request.
-        LOGGER.info("auth_login token payload request_id=%s username=%s tokens=%s", request_id, username, json.dumps(auth))
+        LOGGER.info(
+            "auth_login token payload request_id=%s username=%s tokens=%s",
+            request_id,
+            username,
+            json.dumps(auth),
+        )
         _upsert_user_from_access_token(auth.get("AccessToken"), request_id)
         LOGGER.info("auth_login success request_id=%s username=%s", request_id, username)
         return simple_api_util.build_response(
@@ -105,7 +127,10 @@ def _upsert_user_from_access_token(access_token, request_id):
         LOGGER.warning("auth_login skip user upsert: no access token request_id=%s", request_id)
         return
     if not SERVICE:
-        LOGGER.warning("auth_login skip user upsert: usersStoreTable missing request_id=%s", request_id)
+        LOGGER.warning(
+            "auth_login skip user upsert: usersStoreTable missing request_id=%s",
+            request_id,
+        )
         return
 
     try:
@@ -126,6 +151,10 @@ def _upsert_user_from_access_token(access_token, request_id):
         data["role"] = existing.get("role", "reader")
 
         SERVICE.update_user(user_id, data)
-        LOGGER.info("auth_login upserted user in DynamoDB request_id=%s userId=%s", request_id, user_id)
+        LOGGER.info(
+            "auth_login upserted user in DynamoDB request_id=%s userId=%s",
+            request_id,
+            user_id,
+        )
     except Exception as e:
         LOGGER.exception("auth_login failed to upsert user request_id=%s error=%s", request_id, e)
