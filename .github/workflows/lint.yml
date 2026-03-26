@@ -8,6 +8,7 @@ on:
       - 'backend/**'
       - 'infrastructure/**'
       - '.github/workflows/lint.yml'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   lint-and-format:
