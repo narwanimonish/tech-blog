@@ -9,15 +9,14 @@ Deploy: cdk deploy TechBlogAuthStack (after TechBlogDataStack)
 
 from __future__ import annotations
 
-from aws_cdk import CfnOutput, Stack
-from aws_cdk import aws_cognito as cognito
-from constructs import Construct
+from aws_cdk import CfnOutput, Stack, aws_cognito as cognito
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
+from lambda_config import get_lambda_settings
 from services.cognito_auth import CognitoAuth
 from services.lambda_function import LambdaFunction
-from lambda_config import get_lambda_settings
-
 from stacks.tech_blog_data_stack import TechBlogDataStack
 
 

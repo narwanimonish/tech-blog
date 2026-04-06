@@ -4,6 +4,7 @@ Deploy once; attach to every Lambda so handlers don't bundle a copy.
 """
 
 from aws_cdk import aws_lambda as _lambda
+
 from constructs import Construct
 
 

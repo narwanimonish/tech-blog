@@ -4,8 +4,8 @@ Frontend uses the App Client to sign in; API Gateway validates the JWT via autho
 Hosted UI domain is configured so "View login page" works in the console.
 """
 
-from aws_cdk import RemovalPolicy
-from aws_cdk import aws_cognito as cognito
+from aws_cdk import RemovalPolicy, aws_cognito as cognito
+
 from constructs import Construct
 
 

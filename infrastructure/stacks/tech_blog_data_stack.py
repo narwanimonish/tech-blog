@@ -4,9 +4,10 @@ Deploy first: cdk deploy TechBlogDataStack
 """
 
 from aws_cdk import CfnOutput, Stack
-from constructs import Construct
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
 from services.dynamodb_table import DynamoDBTable
 
 

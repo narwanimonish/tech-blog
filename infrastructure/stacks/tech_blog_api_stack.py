@@ -7,16 +7,14 @@ Deploy last: cdk deploy TechBlogApiStack
 
 from __future__ import annotations
 
-from aws_cdk import CfnOutput, Duration, Stack
-from aws_cdk import aws_apigateway as apigw
-from aws_cdk import aws_iam as iam
-from constructs import Construct
+from aws_cdk import CfnOutput, Duration, Stack, aws_apigateway as apigw, aws_iam as iam
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
+from lambda_config import get_lambda_settings
 from services.lambda_function import LambdaFunction
 from services.rest_api_gateway import RestApiGateway
-from lambda_config import get_lambda_settings
-
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
 
