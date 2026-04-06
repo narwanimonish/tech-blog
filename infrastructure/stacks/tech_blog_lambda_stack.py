@@ -4,18 +4,18 @@ Uses backend/config.json for timeout, memory_size, reserved_concurrency per func
 Requires TechBlogDataStack (table names + IAM grants).
 Deploy after Data: cdk deploy TechBlogLambdaStack
 """
+
 from __future__ import annotations
 
-from aws_cdk import Stack
-from aws_cdk import aws_iam as iam
-from constructs import Construct
+from aws_cdk import Stack, aws_iam as iam
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
+from lambda_config import get_lambda_settings
 from services.dynamodb_table import DynamoDBTable
 from services.lambda_function import LambdaFunction
 from services.shared_layer import SharedLayer
-from lambda_config import get_lambda_settings
-
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
 
@@ -39,7 +39,8 @@ class TechBlogLambdaStack(Stack):
 
         # Shared layer (common + core)
         shared_layer = SharedLayer(
-            self, "SharedLayer",
+            self,
+            "SharedLayer",
             asset_path="../backend/layer_bundle",
         )
         layer = shared_layer.get_layer()
@@ -56,7 +57,8 @@ class TechBlogLambdaStack(Stack):
 
         # Users Lambda – single handler for all users routes (GET /users, GET/PUT/DELETE /users/{userId})
         self.users_api = LambdaFunction(
-            self, "UsersApi",
+            self,
+            "UsersApi",
             function_name=f"{app_name}-users-api",
             entry_path="../backend/webservice/users",
             handler="runtime.users.lambda_handler",
@@ -69,7 +71,8 @@ class TechBlogLambdaStack(Stack):
 
         # Posts Lambda – single handler for all posts routes (GET/POST /posts, GET/PUT/DELETE /posts/{postId})
         self.posts_api = LambdaFunction(
-            self, "PostsApi",
+            self,
+            "PostsApi",
             function_name=f"{app_name}-posts-api",
             entry_path="../backend/webservice/posts",
             handler="runtime.posts.lambda_handler",
@@ -82,7 +85,8 @@ class TechBlogLambdaStack(Stack):
 
         # Auth login (public)
         self.auth_login = LambdaFunction(
-            self, "AuthLogin",
+            self,
+            "AuthLogin",
             function_name=f"{app_name}-auth-login",
             entry_path="../backend/webservice/cognito_login",
             handler="runtime.cognito_login.lambda_handler",
