@@ -4,6 +4,8 @@ Run from repo root: PYTHONPATH=backend pytest backend/tests -v
 Or from backend: PYTHONPATH=. pytest tests -v
 """
 
+# Postpone evaluation of annotations (PEP 563): allows modern hints like dict | None and forward
+# references without quoting; consistent with other backend test modules.
 from __future__ import annotations
 
 import json
