@@ -13,6 +13,9 @@ jobs:
   unit-tests:
     name: Pytest (backend)
     runs-on: ubuntu-latest
+    # Handler modules instantiate boto3 DynamoDB at import time; CI has no ~/.aws config.
+    env:
+      AWS_DEFAULT_REGION: us-east-1
     steps:
       - uses: actions/checkout@v4
 
