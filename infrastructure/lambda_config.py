@@ -2,6 +2,7 @@
 Load Lambda settings from backend/config.json.
 Used by Lambda, API, and Auth stacks for timeout, memory_size, reserved_concurrency.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,5 +47,7 @@ def get_lambda_settings(key: str) -> dict:
     return {
         "timeout_seconds": int(timeout),
         "memory_size": int(memory_size),
-        "reserved_concurrent_executions": int(reserved_concurrency) if reserved_concurrency is not None else None,
+        "reserved_concurrent_executions": int(reserved_concurrency)
+        if reserved_concurrency is not None
+        else None,
     }

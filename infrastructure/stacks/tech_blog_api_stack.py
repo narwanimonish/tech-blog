@@ -4,18 +4,17 @@ Uses backend/config.json for authorizer Lambda timeout, memory, concurrency.
 Requires TechBlogLambdaStack (handler Lambdas). Authorizer Lambda lives here to avoid circular deps.
 Deploy last: cdk deploy TechBlogApiStack
 """
+
 from __future__ import annotations
 
-from aws_cdk import CfnOutput, Duration, Stack
-from aws_cdk import aws_apigateway as apigw
-from aws_cdk import aws_iam as iam
-from constructs import Construct
+from aws_cdk import CfnOutput, Duration, Stack, aws_apigateway as apigw, aws_iam as iam
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
+from lambda_config import get_lambda_settings
 from services.lambda_function import LambdaFunction
 from services.rest_api_gateway import RestApiGateway
-from lambda_config import get_lambda_settings
-
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
 
@@ -36,7 +35,8 @@ class TechBlogApiStack(Stack):
 
         # Authorizer Lambda in this stack (avoids circular dependency with Lambda stack)
         authorizer_lambda = LambdaFunction(
-            self, "Authorizer",
+            self,
+            "Authorizer",
             function_name=f"{app_name}-api-authorizer",
             entry_path="../backend/webservice/authorizer",
             handler="runtime.authorizer.lambda_handler",
@@ -54,13 +54,15 @@ class TechBlogApiStack(Stack):
         )
 
         api = RestApiGateway(
-            self, "Api",
+            self,
+            "Api",
             api_name=f"{app_name}-api",
             allowed_origins=["*"],
         )
 
         authorizer = apigw.RequestAuthorizer(
-            self, "CustomAuthorizer",
+            self,
+            "CustomAuthorizer",
             handler=authorizer_lambda.function,
             identity_sources=[apigw.IdentitySource.header("Authorization")],
             authorizer_name=f"{app_name}-custom-auth",
@@ -74,16 +76,34 @@ class TechBlogApiStack(Stack):
         )
 
         # All users routes → single users Lambda
-        api.add_lambda_resource("users", "GET", lambda_stack.users_api.function, authorizer=authorizer)
-        api.add_lambda_resource("users/{userId}", "GET", lambda_stack.users_api.function, authorizer=authorizer)
-        api.add_lambda_resource("users/{userId}", "PUT", lambda_stack.users_api.function, authorizer=authorizer)
-        api.add_lambda_resource("users/{userId}", "DELETE", lambda_stack.users_api.function, authorizer=authorizer)
+        api.add_lambda_resource(
+            "users", "GET", lambda_stack.users_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "users/{userId}", "GET", lambda_stack.users_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "users/{userId}", "PUT", lambda_stack.users_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "users/{userId}", "DELETE", lambda_stack.users_api.function, authorizer=authorizer
+        )
         # All posts routes → single posts Lambda
-        api.add_lambda_resource("posts", "GET", lambda_stack.posts_api.function, authorizer=authorizer)
-        api.add_lambda_resource("posts", "POST", lambda_stack.posts_api.function, authorizer=authorizer)
-        api.add_lambda_resource("posts/{postId}", "GET", lambda_stack.posts_api.function, authorizer=authorizer)
-        api.add_lambda_resource("posts/{postId}", "PUT", lambda_stack.posts_api.function, authorizer=authorizer)
-        api.add_lambda_resource("posts/{postId}", "DELETE", lambda_stack.posts_api.function, authorizer=authorizer)
+        api.add_lambda_resource(
+            "posts", "GET", lambda_stack.posts_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "posts", "POST", lambda_stack.posts_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "posts/{postId}", "GET", lambda_stack.posts_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "posts/{postId}", "PUT", lambda_stack.posts_api.function, authorizer=authorizer
+        )
+        api.add_lambda_resource(
+            "posts/{postId}", "DELETE", lambda_stack.posts_api.function, authorizer=authorizer
+        )
         api.add_lambda_resource("auth/login", "POST", lambda_stack.auth_login.function)
 
         CfnOutput(self, "ApiUrl", value=api.api.url, description="API Gateway URL")

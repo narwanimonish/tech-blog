@@ -16,7 +16,11 @@ app = cdk.App()
 def _resolve_env():
     """Resolve account/region from env vars, else from default AWS CLI profile."""
     account = os.environ.get("CDK_DEFAULT_ACCOUNT") or os.environ.get("AWS_ACCOUNT_ID")
-    region = os.environ.get("CDK_DEFAULT_REGION") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    region = (
+        os.environ.get("CDK_DEFAULT_REGION")
+        or os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION")
+    )
     if account and region:
         return cdk.Environment(account=account, region=region)
     try:
@@ -26,7 +30,10 @@ def _resolve_env():
         ).strip()
         region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
         if not region:
-            region = subprocess.check_output(["aws", "configure", "get", "region"], text=True).strip() or "us-east-1"
+            region = (
+                subprocess.check_output(["aws", "configure", "get", "region"], text=True).strip()
+                or "us-east-1"
+            )
         return cdk.Environment(account=account, region=region)
     except Exception as e:
         raise RuntimeError(
@@ -40,12 +47,15 @@ cdk_env = _resolve_env()
 data_stack = TechBlogDataStack(app, "TechBlogDataStack", config=env_config, env=cdk_env)
 
 # 2. Cognito User Pool + App Client + Post-confirmation trigger (depends on Data for users table)
-auth_stack = TechBlogAuthStack(app, "TechBlogAuthStack", config=env_config, data_stack=data_stack, env=cdk_env)
+auth_stack = TechBlogAuthStack(
+    app, "TechBlogAuthStack", config=env_config, data_stack=data_stack, env=cdk_env
+)
 auth_stack.add_dependency(data_stack)
 
 # 3. Lambdas (layer, authorizer, handlers) – depends on Data
 lambda_stack = TechBlogLambdaStack(
-    app, "TechBlogLambdaStack",
+    app,
+    "TechBlogLambdaStack",
     config=env_config,
     data_stack=data_stack,
     auth_stack=auth_stack,
@@ -56,7 +66,8 @@ lambda_stack.add_dependency(auth_stack)
 
 # 4. API Gateway + custom Lambda authorizer – depends on Lambda
 api_stack = TechBlogApiStack(
-    app, "TechBlogApiStack",
+    app,
+    "TechBlogApiStack",
     config=env_config,
     lambda_stack=lambda_stack,
     env=cdk_env,

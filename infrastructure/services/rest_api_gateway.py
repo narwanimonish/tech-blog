@@ -1,4 +1,3 @@
-
 from aws_cdk import Duration, aws_apigateway as apigw, aws_lambda as _lambda
 
 from constructs import Construct

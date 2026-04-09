@@ -2,10 +2,12 @@
 DynamoDB tables for tech-blog. No dependencies.
 Deploy first: cdk deploy TechBlogDataStack
 """
+
 from aws_cdk import CfnOutput, Stack
-from constructs import Construct
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
 from services.dynamodb_table import DynamoDBTable
 
 
@@ -25,15 +27,27 @@ class TechBlogDataStack(Stack):
 
         # Include ENV in table names to avoid conflict with existing tables (e.g. from old stack)
         self.users_table = DynamoDBTable(
-            self, "UsersTable",
+            self,
+            "UsersTable",
             table_name=f"{app_name}-{env}-users",
             partition_key_name="userId",
         )
         self.posts_table = DynamoDBTable(
-            self, "PostsTable",
+            self,
+            "PostsTable",
             table_name=f"{app_name}-{env}-posts",
             partition_key_name="postId",
         )
 
-        CfnOutput(self, "UsersTableName", value=self.users_table.table.table_name, export_name=f"{app_name}-{env}-users-table-name")
-        CfnOutput(self, "PostsTableName", value=self.posts_table.table.table_name, export_name=f"{app_name}-{env}-posts-table-name")
+        CfnOutput(
+            self,
+            "UsersTableName",
+            value=self.users_table.table.table_name,
+            export_name=f"{app_name}-{env}-users-table-name",
+        )
+        CfnOutput(
+            self,
+            "PostsTableName",
+            value=self.posts_table.table.table_name,
+            export_name=f"{app_name}-{env}-posts-table-name",
+        )

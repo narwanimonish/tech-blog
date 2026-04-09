@@ -6,17 +6,17 @@ Uses backend/config.json for trigger Lambda timeout, memory, concurrency.
 Depends on TechBlogDataStack for the users table.
 Deploy: cdk deploy TechBlogAuthStack (after TechBlogDataStack)
 """
+
 from __future__ import annotations
 
-from aws_cdk import CfnOutput, Stack
-from aws_cdk import aws_cognito as cognito
-from constructs import Construct
+from aws_cdk import CfnOutput, Stack, aws_cognito as cognito
+
 from config.dev import DevConfig
 from config.prod import ProdConfig
+from constructs import Construct
+from lambda_config import get_lambda_settings
 from services.cognito_auth import CognitoAuth
 from services.lambda_function import LambdaFunction
-from lambda_config import get_lambda_settings
-
 from stacks.tech_blog_data_stack import TechBlogDataStack
 
 
@@ -44,7 +44,8 @@ class TechBlogAuthStack(Stack):
 
         # Post-confirmation Lambda: write new Cognito user to DynamoDB users table (no layer needed)
         cognito_post_confirmation = LambdaFunction(
-            self, "CognitoPostConfirmation",
+            self,
+            "CognitoPostConfirmation",
             function_name=f"{app_name}-cognito-post-confirmation",
             entry_path="../backend/webservice/cognito_post_confirmation",
             handler="runtime.cognito_post_confirmation.lambda_handler",
@@ -62,7 +63,8 @@ class TechBlogAuthStack(Stack):
         # Post-authentication Lambda: audit successful logins.
         # Cognito does not provide JWT/refresh tokens to trigger events.
         cognito_post_authentication = LambdaFunction(
-            self, "CognitoPostAuthentication",
+            self,
+            "CognitoPostAuthentication",
             function_name=f"{app_name}-cognito-post-authentication",
             entry_path="../backend/webservice/cognito_post_authentication",
             handler="runtime.cognito_post_authentication.lambda_handler",
@@ -75,10 +77,21 @@ class TechBlogAuthStack(Stack):
             cognito_post_authentication.function,
         )
 
-        CfnOutput(self, "UserPoolId", value=self.user_pool.user_pool_id, export_name=f"{app_name}-user-pool-id")
-        CfnOutput(self, "UserPoolClientId", value=self.user_pool_client.user_pool_client_id, export_name=f"{app_name}-user-pool-client-id")
         CfnOutput(
-            self, "CognitoDomainUrl",
+            self,
+            "UserPoolId",
+            value=self.user_pool.user_pool_id,
+            export_name=f"{app_name}-user-pool-id",
+        )
+        CfnOutput(
+            self,
+            "UserPoolClientId",
+            value=self.user_pool_client.user_pool_client_id,
+            export_name=f"{app_name}-user-pool-client-id",
+        )
+        CfnOutput(
+            self,
+            "CognitoDomainUrl",
             value=self.cognito_auth.domain.base_url(),
             description="Cognito Hosted UI base URL – use for 'View login page' and OAuth redirects",
         )
