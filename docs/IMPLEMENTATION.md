@@ -7,7 +7,7 @@
 
 | Recommendation | Tech-blog status |
 |----------------|------------------|
-| **API (Lambda) tests** – pytest for auth, validation, CRUD, error handling | **Not yet.** No unit or integration tests for Lambda handlers. |
+| **API (Lambda) tests** – pytest for auth, validation, CRUD, error handling | **Partial.** Unit tests for core services, `error_mapper`, and users/posts handlers (mocked SERVICE + RBAC). No live integration tests against deployed API. |
 | **Web app tests** – Vitest/Jest, E2E for critical flows | **N/A** – no frontend in this repo. |
 | **Contract / API tests** – OpenAPI and contract/snapshot tests | **Partial.** We have `backend/api-spec.yaml` (OpenAPI 3.0). No automated contract or snapshot tests yet. |
 
@@ -81,7 +81,7 @@
 | Recommendation | Tech-blog status |
 |----------------|------------------|
 | **Replace wildcard ARNs** | **Done.** No wildcard DynamoDB ARNs; authorizer uses `*` for Cognito (required for GetUser). |
-| **CI/CD pipeline** – lint and test | **Not yet.** No `.github/workflows` or `.gitlab-ci.yml` in repo. `requirements-dev.txt` includes pytest but tests are not run in CI. |
+| **CI/CD pipeline** – lint and test | **Partial.** `.github/workflows/` runs Ruff on `backend/` and pytest on `backend/tests` (with `AWS_DEFAULT_REGION` for handler imports). Deploy workflow runs CDK after lint on `main`; it does not yet gate on the test workflow. |
 
 ---
 
@@ -90,7 +90,7 @@
 | Priority | What we implemented | What remains |
 |----------|--------------------|--------------|
 | **High impact** | Standardized error responses (code, message, requestId); shared error mapper; centralized Lambda config; authorizer so invalid tokens don’t reach Lambdas; least-privilege table grants. | Unit tests for critical Lambda paths; centralize env validation and fail fast; remove/redact token logging in production. |
-| **Medium term** | Split structure (handlers / services / common); no big “commonUtil” (focused modules); OpenAPI spec; RBAC with config-driven permissions. | Request validation (e.g. Pydantic/schema); dedicated ValidationError and field-level 400; structured JSON logging; docstring/lint rules; CI pipeline for lint and test; Swagger UI or generated API docs. |
+| **Medium term** | Split structure (handlers / services / common); no big “commonUtil” (focused modules); OpenAPI spec; RBAC with config-driven permissions; CI for Ruff + pytest. | Request validation (e.g. Pydantic/schema); dedicated ValidationError and field-level 400; structured JSON logging; docstring/lint rules; gate deploy on tests if desired; Swagger UI or generated API docs. |
 | **Lower** | — | Contract/snapshot tests against OpenAPI; E2E if/when a frontend is added. |
 
 ---
