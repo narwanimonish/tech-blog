@@ -1,99 +1,113 @@
 # Tech Blog – implementation outline (with sub-points)
 
-High-level checklist of what the repository implements. Use this for demos, onboarding, or résumé-style summaries.
+Checklist ordered for demos, onboarding, or summaries. Deeper RBAC detail: [IMPLEMENTATION.md §2](IMPLEMENTATION.md).
 
 ---
 
 ## 1. Project code structure
 
-- **`backend/common/`** – Shared runtime code: DynamoDB helpers (`dynamodb_util`), HTTP/error helpers (`simple_api_util`, `error_mapper`, `errors`), RBAC (`role_util`, `rbac_config/*.json`).
-- **`backend/core/`** – Domain services: `PostsService`, `UsersService` (table access and business rules).
-- **`backend/webservice/`** – One folder per Lambda asset: `runtime/<handler>.py` only in the zip; imports `common` and `core` from the **layer** at `/opt/python`.
-- **`backend/api-spec.yaml`** – OpenAPI 3.0 description of routes, schemas, and security.
-- **`backend/config.json`** – Per-function Lambda settings (timeout, memory, reserved concurrency) read by CDK.
-- **`backend/build.py`** – Builds `layer_bundle/python/{common,core}` and strips duplicate copies from webservice folders.
-- **`infrastructure/`** – Python CDK app (`app.py`), environment config, reusable service constructs, stacks.
-- **`backend/tests/`** – Pytest layout: `unit/core`, `unit/common`, `unit/webservice`; shared `conftest.py` and `README.md`.
-- **`docs/`** – Implementation notes, testing notes, this outline.
-- **Frontend** – Not present in this repo (Ruff excludes a `frontend` path if added later).
+- **`backend/common/`** – Shared runtime: DynamoDB (`dynamodb_util`), HTTP/errors (`simple_api_util`, `error_mapper`, `errors`), RBAC (`role_util`, `rbac_config/*.json`).
+- **`backend/core/`** – Domain services: `PostsService`, `UsersService`.
+- **`backend/webservice/`** – One deployable folder per Lambda; **`runtime/<handler>.py`** only in the asset zip; **`common`** and **`core`** loaded from the Lambda layer.
+- **`backend/api-spec.yaml`** – OpenAPI 3.0 (paths, schemas, security).
+- **`backend/config.json`** – Per-Lambda timeout, memory, reserved concurrency (read by CDK).
+- **`backend/build.py`** – Produces **`layer_bundle/python/{common,core}`** and removes duplicate copies from under `webservice/`.
+- **`infrastructure/`** – CDK app (`app.py`), `config/` (dev/prod), reusable constructs, stacks.
+- **`backend/tests/`** – Pytest: `unit/core`, `unit/common`, `unit/webservice`; `conftest.py`; [backend/tests/README.md](../backend/tests/README.md).
+- **`docs/`** – `IMPLEMENTATION.md`, `TESTING.md`, this outline.
+- **API surface** – REST CRUD for users and posts via API Gateway → Lambda → DynamoDB (see CDK stacks).
+- **Frontend** – Not in this repo; `sonar-project.properties` still mentions frontend for future use.
 
 ---
 
-## 2. CDK constructs developed
+## 2. Lambda layers and common code deployment
 
-- **`TechBlogDataStack`** – DynamoDB tables for users (`userId`) and posts (`postId`); names include app name and env suffix.
-- **`TechBlogAuthStack`** – Cognito User Pool, app client, Lambda triggers wired to user storage; depends on data stack.
-- **`TechBlogLambdaStack`** – Shared Lambda layer asset, `users_api`, `posts_api`, `cognito_login` functions; IAM grants to specific tables; env vars for table names.
-- **`TechBlogApiStack`** – API Gateway REST API, routes, Lambda integrations, **custom Lambda authorizer** (defined here to avoid circular dependencies with the Lambda stack).
-- **Reusable constructs** (under `infrastructure/services/`) – e.g. `LambdaFunction`, `SharedLayer`, `DynamoDBTable`, `RestApiGateway`.
-- **`infrastructure/app.py`** – Wires stacks in order: Data → Auth → Lambda → API, with explicit dependencies.
-- **Legacy / alternate stack files** – `tech_blog_stack.py`, `api_gateway_stack.py`, `user_service_stack.py` may exist alongside the `TechBlog*` stacks; confirm whether they are still deployed or historical.
+- **Build** – Run `python build.py` from `backend/` to populate **`layer_bundle/python/common`** and **`layer_bundle/python/core`** (skips `__pycache__` / `.pyc`).
+- **CDK** – `SharedLayer` in `TechBlogLambdaStack` packages `backend/layer_bundle` and attaches it to app Lambdas.
+- **Handler zips** – Contain only handler code under `runtime/`; shared libraries are **not** duplicated inside each function asset.
+- **RBAC JSON** – Lives under `common/rbac_config/` and ships in the layer so all route Lambdas share the same permission files.
 
 ---
 
-## 3. Lambda layers and common code deployment
+## 3. Cognito auth and Lambda authorizer
 
-- **Layer contents** – `common` and `core` copied into `backend/layer_bundle/python/` via `build.py` (excludes `__pycache__` / `.pyc`).
-- **Attachment** – All app Lambdas in `TechBlogLambdaStack` use the same shared layer construct (`SharedLayer`).
-- **Handler bundles** – Each webservice directory deployed as a Lambda asset contains **only** the handler code (`runtime/`); no bundled copy of `common`/`core` in the asset zip (they come from the layer).
-- **RBAC config** – JSON files under `common/rbac_config/` ship inside the layer so every protected Lambda sees the same permission maps.
-
----
-
-## 4. Cognito auth and Lambda authorizer
-
-- **User Pool + client** – Provisioned in `TechBlogAuthStack`; used for sign-up, login, and JWT issuance.
-- **Triggers** – Cognito-trigger Lambdas (e.g. post-confirmation, post-authentication) under `backend/webservice/` create or update users in DynamoDB and set default **role** where applicable.
-- **`cognito_login`** – Login Lambda exposes tokens / session flow expected by the API (see OpenAPI and `backend/README.md`).
-- **Custom API authorizer** – Validates the Cognito JWT before API Gateway forwards to route Lambdas; passes identity context (`sub`, etc.) into `requestContext.authorizer`.
-- **Handler-level RBAC** – After the authorizer, users/posts handlers call `role_util.is_user_action_valid(event)` for path/method permissions (see [IMPLEMENTATION.md §2 – RBAC](IMPLEMENTATION.md)).
+- **User Pool + app client** – Created in **`TechBlogAuthStack`**; issues JWTs for the API.
+- **Cognito trigger Lambdas** – Under `backend/webservice/` (e.g. post-confirmation, post-authentication): sync users to DynamoDB, default role where applicable.
+- **`cognito_login`** – Login Lambda aligned with the auth paths in OpenAPI / `backend/README.md`.
+- **Custom Lambda authorizer** – Defined in **`TechBlogApiStack`**: validates **Cognito JWT** before the request hits users/posts Lambdas; puts **`sub`** (and related context) on **`requestContext.authorizer`**.
+- **After the authorizer** – Business Lambdas still enforce **RBAC** by path/method (see §4); the authorizer does not replace role checks.
 
 ---
 
-## 5. Linting and formatting
+## 4. RBAC
 
-- **Ruff** – Configured in root `pyproject.toml` (Python 3.11 target, line length, rules `E`, `F`, `W`, `I`).
-- **Scope** – `ruff check` and `ruff format --check` run on `backend/` in CI.
-- **Excludes** – Virtual envs, `cdk.out`, `frontend`, `__pycache__`, etc., per `pyproject.toml`.
-
----
-
-## 6. Infrastructure configuration for environments (dev and prod)
-
-- **`APP_ENV`** – Environment variable read at CDK synth time (`infrastructure/config/__init__.py`): `prod` selects `ProdConfig`, anything else (default **`dev`**) selects `DevConfig`.
-- **`DevConfig` / `ProdConfig`** – Separate modules under `infrastructure/config/` (e.g. app name, env label, and any env-specific constants).
-- **AWS account / region** – Resolved from `CDK_DEFAULT_ACCOUNT`, `AWS_ACCOUNT_ID`, `CDK_DEFAULT_REGION`, `AWS_REGION`, or AWS CLI / STS when not set in env.
-- **Table naming** – Includes `ENV` from config so dev and prod stacks can coexist without clashing on table names.
+- **Roles** – **admin**, **writer**, **reader** (stored on each user in DynamoDB **`role`** field; new users default to **reader** via triggers / login upsert).
+- **Permission model** – Service + level strings (e.g. `posts.manage`, `users.view`); levels **fullaccess** / **manage** / **view** with **dependencies** defined in JSON (not hardcoded ordering in Python).
+- **Config files** (in layer) – `backend/common/rbac_config/`:
+  - **`service_level_permissions.json`** – Services, levels, dependency expansion.
+  - **`consolidated_api_permissions.json`** – Maps **path + HTTP method** → required permission(s).
+  - **`role_permissions.json`** – Maps **role** → service→level; includes **`default_role`**.
+- **Code entry point** – **`role_util.is_user_action_valid(event)`**: resolves normalized path, loads user role from the users table, expands effective permissions, returns allow or deny message.
+- **Handlers** – Users and posts **`runtime`** modules call RBAC at the start; on deny return **403** with standard error shape (`FORBIDDEN`, `requestId`, etc.).
+- **Posts Lambda IAM** – Read access to **users** table for role lookup during RBAC.
 
 ---
 
-## 7. Unit testing
+## 5. Unit testing
 
-- **Runner** – `pytest` (see `infrastructure/requirements-dev.txt`).
-- **How to run** – From repo root: `PYTHONPATH=backend python -m pytest backend/tests -v` (see `backend/tests/README.md`).
-- **`unit/core/`** – Tests for `PostsService` and `UsersService` with a mocked DynamoDB table (`mock_table` fixture).
-- **`unit/common/`** – Tests for shared utilities (e.g. `error_mapper`).
-- **`unit/webservice/`** – Handler tests: patch `SERVICE` and RBAC, import `runtime.*` with `sys.path` adjusted per Lambda layout.
-- **CI note** – Webservice tests need a default AWS region at **import** time (`AWS_DEFAULT_REGION`), because handlers construct `boto3.resource("dynamodb")` at module load; real AWS is not called when mocks are applied.
-
----
-
-## 8. GitHub Actions
-
-- **Lint workflow** – On push to any branch when `backend/`, `infrastructure/`, or the workflow file changes: Python 3.11, Ruff check + format check.
-- **Test workflow** – On push when `backend/`, `infrastructure/requirements-dev.txt`, or the workflow changes: install dev deps, set `AWS_DEFAULT_REGION`, run pytest on `backend/tests`.
-- **Deploy workflow** – Triggered after the **lint** workflow completes successfully on **`main`**; assumes AWS OIDC (`AWS_ROLE_ARN` secret), installs CDK CLI and infrastructure requirements, runs `cdk deploy --all --require-approval never`.
-- **Gating** – Deploy currently depends on **lint passing**, not on the **test** workflow; you can add a `workflow_run` on tests or merge jobs if you want deploy blocked on pytest too.
+- **Tooling** – **pytest** in `infrastructure/requirements-dev.txt`.
+- **Run (repo root)** – `PYTHONPATH=backend python -m pytest backend/tests -v` (see [backend/tests/README.md](../backend/tests/README.md)).
+- **`unit/core/`** – `PostsService` / `UsersService` with **`mock_table`** (fake DynamoDB).
+- **`unit/common/`** – e.g. `error_mapper` and other shared helpers.
+- **`unit/webservice/`** – Handler tests with **`patch`** on `SERVICE` and RBAC; **`sys.path`** adjusted to import each Lambda’s **`runtime`** package.
+- **Import-time AWS** – Handlers create `boto3.resource("dynamodb")` at module import; CI and local runs should set **`AWS_DEFAULT_REGION`** (or equivalent) so collection succeeds; tests do not call real AWS when mocks apply.
 
 ---
 
-## 9. Additional areas (cross-cutting)
+## 6. CDK constructs developed
 
-- **REST API and persistence** – CRUD for users and posts via API Gateway → Lambda → DynamoDB; least-privilege IAM on specific table constructs.
-- **Standard errors** – `AppError`, `error_mapper`, and `simple_api_util.build_error_response` / `build_error_from_exception` for consistent API error shape (`errorCode`, `message`, `requestId`).
-- **OpenAPI as contract** – `api-spec.yaml` documents paths and schemas; no generated Swagger UI or automated contract tests in-repo yet (see [IMPLEMENTATION.md](IMPLEMENTATION.md) for gaps).
-- **Documentation** – Root `README.md`, `backend/README.md` (structure, RBAC, Postman-style examples), `backend/tests/README.md`, `docs/TESTING.md`, `docs/IMPLEMENTATION.md`.
+- **`TechBlogDataStack`** – DynamoDB **users** (`userId`) and **posts** (`postId`); names include app + env.
+- **`TechBlogAuthStack`** – Cognito + triggers; depends on data stack.
+- **`TechBlogLambdaStack`** – Shared layer, **`users_api`**, **`posts_api`**, **`cognito_login`**; table env vars; IAM grants to specific tables.
+- **`TechBlogApiStack`** – REST API, routes, Lambda integrations, **authorizer** Lambda (avoids circular deps with the Lambda stack).
+- **Reusable constructs** – `infrastructure/services/` (e.g. **`LambdaFunction`**, **`SharedLayer`**, **`DynamoDBTable`**, **`RestApiGateway`**).
+- **`infrastructure/app.py`** – Synth order: **Data → Auth → Lambda → API** with explicit dependencies.
+- **Other stack files** – e.g. `tech_blog_stack.py`, `api_gateway_stack.py`, `user_service_stack.py` may be legacy; confirm before relying on them vs **`TechBlog*`** stacks.
 
 ---
 
-*Last aligned with repo layout: stacks under `infrastructure/stacks/`, workflows under `.github/workflows/`.*
+## 7. Linting and formatting
+
+- **Ruff** – Root **`pyproject.toml`**: Python **3.11**, line length **130**, rules **E**, **F**, **W**, **I**.
+- **CI** – **`ruff check`** and **`ruff format --check`** on **`backend/`** (see `.github/workflows/lint.yml`).
+- **Excludes** – `.venv`, `cdk.out`, `frontend`, `__pycache__`, etc., per `pyproject.toml`.
+
+---
+
+## 8. Infrastructure configuration for environments (dev and prod)
+
+- **`APP_ENV`** – Read when CDK loads **`infrastructure/config`**: **`prod`** → **`ProdConfig()`**, else (default) **`DevConfig()`**.
+- **`DevConfig` / `ProdConfig`** – `infrastructure/config/dev.py`, `prod.py` (app name, **`ENV`** label, and other env-specific values).
+- **AWS account / region for synth** – From **`CDK_DEFAULT_ACCOUNT`**, **`AWS_ACCOUNT_ID`**, **`CDK_DEFAULT_REGION`**, **`AWS_REGION`**, or AWS CLI / STS fallback in `app.py`.
+- **Resource naming** – **`ENV`** in table names (and similar) so dev and prod can coexist without name clashes.
+
+---
+
+## 9. GitHub Actions
+
+- **Lint** – Push to any branch (filtered paths): Python 3.11, install Ruff, check + format check on `backend/`.
+- **Tests** – Push when `backend/`, `infrastructure/requirements-dev.txt`, or workflow changes: install dev deps, **`AWS_DEFAULT_REGION`**, pytest on **`backend/tests`**.
+- **Deploy** – After **lint** workflow succeeds on **`main`**: OIDC to AWS (`AWS_ROLE_ARN`), CDK CLI, `pip install -r infrastructure/requirements.txt`, **`cdk deploy --all --require-approval never`**.
+- **Gating note** – Deploy is tied to **lint**, not automatically to the **test** workflow; extend workflows if you want deploy blocked on pytest.
+
+---
+
+## 10. SonarQube
+
+- **Repository config** – Root **`sonar-project.properties`**: project key **`tech-blog`**, sources **`backend`**, **`infrastructure`**, tests **`backend/tests`**, coverage/exclusion patterns for test paths; **`sonar.host.url`** defaults to **`http://localhost:9000`** for a local SonarQube server.
+- **How to use** – Run the **SonarScanner** CLI (or your IDE plugin) against this repo with a running SonarQube instance and token/credentials as required by your setup; the properties file is the **scan configuration**, not the server itself.
+- **CI** – There is **no** SonarQube step in **`.github/workflows/`** today; adding analysis would be a separate workflow (e.g. SonarCloud or self-hosted scanner + quality gate).
+
+---
+
+*Aligned with: `infrastructure/stacks/`, `.github/workflows/`, `sonar-project.properties`.*
