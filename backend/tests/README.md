@@ -69,7 +69,37 @@ PYTHONPATH=. python -m pytest tests -v
 
 ---
 
-## 5. End-to-end flow (example)
+## 5. End-to-end flow (examples)
+
+These walk through **what runs, in order**, for two typical tests.
+
+### 5.1 Core service test (mock DynamoDB)
+
+**Test:** `test_get_post_returns_item` in `unit/core/test_posts_service.py`.
+
+**Idea:** You never touch real AWS. `mock_table` is a `MagicMock` that pretends to be a DynamoDB table. You tell it what `get_item` should return; your service code runs for real on top of that fake.
+
+**Call sequence (plain English):**
+
+| Step | What runs | Notes |
+|------|-----------|--------|
+| 1 | You run pytest (see §1). | Pytest discovers `test_*` functions under `backend/tests/`. |
+| 2 | Pytest loads `conftest.py`. | Adds `backend/` to `sys.path`, registers fixtures (`mock_table`, etc.). |
+| 3 | Pytest sees `mock_table` in the test’s parameters. | Runs the **`mock_table` fixture**: builds a fake table with safe defaults (`get_item` → empty item, etc.). |
+| 4 | Your test function runs. | First line can override `mock_table.get_item.return_value` to simulate “DB returned this row.” |
+| 5 | `PostsService(mock_table)` | `PostsService.__init__` stores the mock as `self._table`. |
+| 6 | `svc.get_post("p1")` | `PostsService.get_post` in `core/posts/service.py`. |
+| 7 | `dynamodb_util.get_item(self._table, {"postId": "p1"})` | Shared helper in `common/dynamodb_util.py`. |
+| 8 | `table.get_item(Key=...)` on the mock | No network: the mock returns the dict you configured in step 4. |
+| 9 | `get_item` returns `response.get("Item")` | Your service gets a normal Python dict (or `None` if you simulated a miss). |
+| 10 | `assert ...` and `mock_table.get_item.assert_called_once_with(...)` | Pytest checks behavior and that the fake was called with the expected key. |
+
+**One-line chain:**  
+`pytest` → `mock_table` fixture → `test_get_post_returns_item` → `PostsService.__init__` → `PostsService.get_post` → `dynamodb_util.get_item` → `mock_table.get_item` → assertions.
+
+**Related create flow:** For `test_create_post_sets_post_id_and_metadata`, the chain is similar, but after `create_post` the code sets `postId`, timestamps, and `created_by`, then calls `dynamodb_util.put_item` → `mock_table.put_item` (still all on the mock).
+
+### 5.2 Webservice handler test (mock service + RBAC)
 
 For `test_get_posts_list_returns_200_and_items` in `unit/webservice/test_posts_handler.py`:
 
