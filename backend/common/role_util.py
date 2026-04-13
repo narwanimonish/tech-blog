@@ -97,6 +97,16 @@ def _expand_effective_permissions(role_permissions: dict) -> set[str]:
 _API_ROOT_SEGMENTS = frozenset({"users", "posts", "auth"})
 
 
+def _canonical_api_path(p: str) -> str:
+    """Leading slash for comparison (API Gateway sometimes omits it on resource / resourcePath)."""
+    s = (p or "").strip()
+    if not s:
+        return ""
+    if not s.startswith("/"):
+        s = "/" + s
+    return s
+
+
 def _strip_stage_prefix(path: str) -> str:
     """
     API Gateway often includes the stage as the first path segment (e.g. /dev/users/...).
@@ -110,10 +120,22 @@ def _strip_stage_prefix(path: str) -> str:
     return path
 
 
+def _strip_all_stage_prefixes(path: str) -> str:
+    """Strip one or more stage-like leading segments (e.g. /dev/... or rare double prefixes)."""
+    p = path or ""
+    for _ in range(8):
+        n = _strip_stage_prefix(p)
+        if n == p:
+            break
+        p = n
+    return p
+
+
 def _normalize_path(path: str) -> str:
     """Convert request path to config path template, e.g. /users/abc-123 -> /users/{userId}."""
-    path = _strip_stage_prefix(path)
-    if not path or not path.startswith("/"):
+    path = _strip_all_stage_prefixes(path)
+    path = _canonical_api_path(path)
+    if not path or path == "/":
         return path
     parts = path.strip("/").split("/")
     if len(parts) == 1:
@@ -127,19 +149,78 @@ def _normalize_path(path: str) -> str:
     return path
 
 
-def _get_required_permissions(path: str, method: str) -> list[str]:
+def _extract_http_method(event: dict) -> str:
+    """REST proxy uses httpMethod; some clients / HTTP API v2 use other fields."""
+    m = event.get("httpMethod")
+    if m:
+        return str(m).upper()
+    rc = event.get("requestContext") or {}
+    m = rc.get("httpMethod")
+    if m:
+        return str(m).upper()
+    http = rc.get("http") or {}
+    m = http.get("method")
+    if m:
+        return str(m).upper()
+    rk = (event.get("routeKey") or "").strip()
+    if rk and " " in rk:
+        return rk.split(None, 1)[0].upper()
+    return ""
+
+
+def _permission_path_candidates(event: dict) -> list[str]:
     """
-    path may be API Gateway `resource` (e.g. /users/{userId}/role) or a raw `path` (/users/u1/role or /dev/users/u1/role).
+    Build paths that might match consolidated_api_permissions.json.
+    Prefer API Gateway resource templates, then normalize raw paths (with stage stripped).
     """
-    if path and "{" in path:
-        normalized = path
-    else:
-        normalized = _normalize_path(path)
+    seen: set[str] = set()
+    out: list[str] = []
+
+    def add_template_or_raw(p: str) -> None:
+        c = _canonical_api_path(p)
+        if not c or c in seen:
+            return
+        seen.add(c)
+        out.append(c)
+
+    rc = event.get("requestContext") or {}
+    add_template_or_raw(event.get("resource") or "")
+    add_template_or_raw(rc.get("resourcePath") or "")
+
+    for raw in (event.get("path"), rc.get("path"), event.get("rawPath")):
+        if not raw:
+            continue
+        add_template_or_raw(_normalize_path(str(raw).strip()))
+
+    return out
+
+
+def _get_required_permissions_for_event(event: dict) -> list[str]:
+    method = _extract_http_method(event)
+    if not method:
+        LOGGER.warning("RBAC: missing httpMethod (event keys=%s)", sorted(event.keys()))
+        return []
+
+    candidates = _permission_path_candidates(event)
     apis = _get_api_permissions_config()
+    want_method = method.upper()
+
     for api in apis:
-        if api.get("path") == normalized and (api.get("method") or "").upper() == (method or "").upper():
-            return api.get("permissions", [])
-    LOGGER.warning("No API permission rule for %s %s (normalized %s)", method, path, normalized)
+        if (api.get("method") or "").upper() != want_method:
+            continue
+        cfg_path = _canonical_api_path(api.get("path") or "")
+        for cand in candidates:
+            if cfg_path == _canonical_api_path(cand):
+                return api.get("permissions", [])
+
+    LOGGER.warning(
+        "No API permission rule for method=%s candidates=%s (resource=%r path=%r resourcePath=%r)",
+        method,
+        candidates,
+        event.get("resource"),
+        event.get("path"),
+        (event.get("requestContext") or {}).get("resourcePath"),
+    )
     return []
 
 
@@ -179,12 +260,7 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     Uses role from DynamoDB users table (key "role"); default role is "reader".
     Returns (allowed: bool, error_message: str). If allowed, error_message is empty.
     """
-    # Prefer `resource` (path template /users/{userId}/role); else raw path (may include stage prefix /dev/...).
-    path = (
-        (event.get("resource") or "").strip()
-        or (event.get("path") or event.get("requestContext", {}).get("path") or "").strip()
-    )
-    method = (event.get("httpMethod") or "").upper()
+    method = _extract_http_method(event)
     authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
     sub = user_id or authorizer.get("sub") or authorizer.get("principalId") or ""
     if not sub:
@@ -197,7 +273,7 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     if not role_perms and role != "admin":
         LOGGER.warning("Unknown role or no permissions: %s", role)
 
-    required = _get_required_permissions(path, method)
+    required = _get_required_permissions_for_event(event)
     if not required:
         # No rule: deny by default (or we could allow – safer to deny)
         return False, "No permission rule for this API"
@@ -205,12 +281,13 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     for perm in required:
         if not _role_has_permission(role_perms, perm):
             LOGGER.info(
-                "RBAC denied: user %s role %s lacks %s for %s %s",
+                "RBAC denied: user %s role %s lacks %s for %s path=%r resource=%r",
                 sub,
                 role,
                 perm,
                 method,
-                path,
+                event.get("path"),
+                event.get("resource"),
             )
             return False, f"Insufficient permission: requires {perm}"
 
