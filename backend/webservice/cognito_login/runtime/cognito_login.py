@@ -142,12 +142,15 @@ def _upsert_user_from_access_token(access_token, request_id):
             LOGGER.warning("auth_login skip user upsert: missing sub request_id=%s", request_id)
             return
 
+        pool_username = resp.get("Username") or ""
         # Preserve existing role when upserting (get existing user first)
         existing = SERVICE.get_user(user_id) or {}
         data = {"email": attrs.get("email", "")}
         name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username")
         if name:
             data["name"] = name
+        if pool_username:
+            data["cognitoUsername"] = pool_username
         data["role"] = existing.get("role", "reader")
 
         SERVICE.update_user(user_id, data)

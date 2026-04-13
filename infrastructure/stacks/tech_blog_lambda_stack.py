@@ -45,7 +45,11 @@ class TechBlogLambdaStack(Stack):
         )
         layer = shared_layer.get_layer()
 
-        users_env = {"usersStoreTable": users_table.table.table_name}
+        users_env = {
+            "usersStoreTable": users_table.table.table_name,
+            "USER_POOL_ID": auth_stack.user_pool.user_pool_id,
+            "USER_POOL_REGION": self.region,
+        }
         posts_env = {
             "postsTable": posts_table.table.table_name,
             "usersStoreTable": users_table.table.table_name,  # for RBAC role lookup
@@ -103,6 +107,13 @@ class TechBlogLambdaStack(Stack):
 
         # IAM: grant Lambdas access to DynamoDB (posts_api needs users read for RBAC role lookup)
         users_table.table.grant_read_write_data(self.users_api.function)
+        self.users_api.function.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["cognito-idp:AdminDeleteUser"],
+                resources=[auth_stack.user_pool.user_pool_arn],
+            )
+        )
         posts_table.table.grant_read_write_data(self.posts_api.function)
         users_table.table.grant_read_data(self.posts_api.function)
         users_table.table.grant_read_write_data(self.auth_login.function)

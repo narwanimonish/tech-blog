@@ -35,10 +35,13 @@ def lambda_handler(event, context):
         LOGGER.warning("No sub in userAttributes")
         return event
 
+    cognito_username = event.get("userName") or ""
     email = attrs.get("email", "")
     name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username") or ""
 
     item = {"userId": user_id, "email": email, "role": "reader"}
+    if cognito_username:
+        item["cognitoUsername"] = cognito_username
     if name:
         item["name"] = name
 

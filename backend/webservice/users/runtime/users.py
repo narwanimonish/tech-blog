@@ -20,7 +20,16 @@ LOGGER.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ.get("usersStoreTable", "users-store")
 TABLE = boto3.resource("dynamodb").Table(TABLE_NAME)
-SERVICE = UsersService(TABLE)
+_USER_POOL_ID = os.environ.get("USER_POOL_ID", "").strip()
+_POOL_REGION = os.environ.get("USER_POOL_REGION", os.environ.get("AWS_REGION", "us-east-1"))
+_COGNITO_CLIENT = (
+    boto3.client("cognito-idp", region_name=_POOL_REGION) if _USER_POOL_ID else None
+)
+SERVICE = UsersService(
+    TABLE,
+    cognito_client=_COGNITO_CLIENT,
+    user_pool_id=_USER_POOL_ID or None,
+)
 
 
 def lambda_handler(event, context):
