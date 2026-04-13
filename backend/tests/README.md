@@ -15,6 +15,23 @@ PYTHONPATH=backend python -m pytest backend/tests -v
 
 (`requirements-dev.txt` includes **pytest**, **boto3**, and **botocore**, which some tests need for imports such as `ClientError`.)
 
+**If you see** `No such file or directory: 'infrastructure/requirements-dev.txt'` **or** `file or directory not found: backend/tests`, your shell is **not** at the repo root (for example you `cd`’d into `infrastructure/`). Fix:
+
+```bash
+cd /path/to/tech-blog    # directory that contains both backend/ and infrastructure/
+pip install -r infrastructure/requirements-dev.txt
+PYTHONPATH=backend python -m pytest backend/tests -v
+```
+
+**From inside `infrastructure/`** (paths are different):
+
+```bash
+pip install -r requirements-dev.txt
+cd .. && PYTHONPATH=backend python -m pytest backend/tests -v
+```
+
+(`requirements-dev.txt` for pytest lives next to `requirements.txt` under `infrastructure/`.)
+
 **From the `backend` directory:**
 
 ```bash
