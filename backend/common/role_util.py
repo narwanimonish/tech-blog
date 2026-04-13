@@ -102,6 +102,8 @@ def _normalize_path(path: str) -> str:
         return "/" + parts[0]
     if parts[0] == "users" and len(parts) == 2:
         return "/users/{userId}"
+    if parts[0] == "users" and len(parts) == 3 and parts[2] == "role":
+        return "/users/{userId}/role"
     if parts[0] == "posts" and len(parts) == 2:
         return "/posts/{postId}"
     return path

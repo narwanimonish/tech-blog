@@ -88,6 +88,12 @@ class TechBlogApiStack(Stack):
         api.add_lambda_resource(
             "users/{userId}", "DELETE", lambda_stack.users_api.function, authorizer=authorizer
         )
+        api.add_lambda_resource(
+            "users/{userId}/role",
+            "PUT",
+            lambda_stack.users_api.function,
+            authorizer=authorizer,
+        )
         # All posts routes → single posts Lambda
         api.add_lambda_resource(
             "posts", "GET", lambda_stack.posts_api.function, authorizer=authorizer

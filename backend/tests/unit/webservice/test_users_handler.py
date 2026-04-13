@@ -71,6 +71,48 @@ def test_get_user_by_id_returns_404_when_not_found(mock_context, mock_service):
     assert "requestId" in body
 
 
+def test_put_user_strips_role_from_body(mock_context, mock_service):
+    mock_service.update_user.return_value = {"userId": "u1", "email": "a@b.com", "role": "reader"}
+    event = api_event(
+        "PUT",
+        "/users/u1",
+        path_params={"userId": "u1"},
+        body={"email": "a@b.com", "name": "A", "role": "admin"},
+    )
+    event["path"] = "/users/u1"
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch("runtime.users.SERVICE", mock_service):
+            users_lambda_handler(event, mock_context)
+    mock_service.update_user.assert_called_once_with("u1", {"email": "a@b.com", "name": "A"})
+
+
+def test_put_user_role_returns_200(mock_context, mock_service):
+    mock_service.update_user_role.return_value = {
+        "userId": "u1",
+        "email": "a@b.com",
+        "role": "writer",
+    }
+    event = api_event("PUT", "/users/u1/role", path_params={"userId": "u1"}, body={"role": "writer"})
+    event["path"] = "/users/u1/role"
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch("runtime.users.SERVICE", mock_service):
+            resp = users_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["role"] == "writer"
+    mock_service.update_user_role.assert_called_once_with("u1", "writer")
+
+
+def test_put_user_role_400_when_role_missing(mock_context, mock_service):
+    event = api_event("PUT", "/users/u1/role", path_params={"userId": "u1"}, body={})
+    event["path"] = "/users/u1/role"
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch("runtime.users.SERVICE", mock_service):
+            resp = users_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 400
+    mock_service.update_user_role.assert_not_called()
+
+
 def test_put_user_returns_200_and_updated_user(mock_context, mock_service):
     mock_service.update_user.return_value = {
         "userId": "u1",

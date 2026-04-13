@@ -7,8 +7,11 @@ import logging
 
 from botocore.exceptions import ClientError
 from common import dynamodb_util
+from common.errors import AppError
 
 LOGGER = logging.getLogger(__name__)
+
+VALID_USER_ROLES = frozenset({"admin", "writer", "reader"})
 
 
 def _cognito_username_for_delete(item: dict | None, user_id: str) -> str:
@@ -39,6 +42,23 @@ class UsersService:
         dynamodb_util.put_item(self._table, data)
         LOGGER.info("Put user %s", user_id)
         return data
+
+    def update_user_role(self, user_id, role: str):
+        """Set user's role to admin, writer, or reader. Raises AppError if user missing or role invalid."""
+        normalized = (role or "").strip().lower()
+        if normalized not in VALID_USER_ROLES:
+            raise AppError(
+                "BAD_REQUEST",
+                f"role must be one of: {', '.join(sorted(VALID_USER_ROLES))}",
+                400,
+            )
+        existing = dynamodb_util.get_item(self._table, {"userId": user_id})
+        if not existing:
+            raise AppError("NOT_FOUND", "User not found", 404)
+        merged = {**existing, "userId": user_id, "role": normalized}
+        dynamodb_util.put_item(self._table, merged)
+        LOGGER.info("Updated role for user %s to %s", user_id, normalized)
+        return merged
 
     def list_users(self):
         """List all users. Returns list of item dicts."""

@@ -111,6 +111,40 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /users/{userId}/role:
+    put:
+      summary: Change user role (admin only)
+      description: |
+        Sets the user's **role** to `admin`, `writer`, or `reader` (any transition).
+        Requires **users.fullaccess** (typically the **admin** role only).
+        Use this endpoint instead of `PUT /users/{userId}` for role changes; generic user update ignores `role`.
+      operationId: updateUserRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRoleUpdate"
+      responses:
+        "200":
+          description: Updated user including new role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /posts:
     get:
       summary: List posts
@@ -271,14 +305,27 @@ components:
           format: email
         name:
           type: string
+        role:
+          type: string
+          enum: [admin, writer, reader]
+          description: Application RBAC role (stored in users table)
     UserUpdate:
       type: object
+      description: Profile fields only; **role** is ignored — use `PUT /users/{userId}/role`.
       properties:
         email:
           type: string
           format: email
         name:
           type: string
+    UserRoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [admin, writer, reader]
+          description: New role (any change between admin, writer, and reader is allowed)
     UserListResponse:
       type: object
       properties:
@@ -359,6 +406,16 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated but not allowed (e.g. non-admin calling admin-only API)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            errorCode: FORBIDDEN
+            message: "Insufficient permission: requires users.fullaccess"
+            requestId: "..."
     NotFound:
       description: Resource not found
       content:

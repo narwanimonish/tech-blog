@@ -25,6 +25,12 @@
       "permissions": ["users.fullaccess"]
     },
     {
+      "path": "/users/{userId}/role",
+      "method": "PUT",
+      "description": "Change user role (admin only)",
+      "permissions": ["users.fullaccess"]
+    },
+    {
       "path": "/posts",
       "method": "GET",
       "description": "List all posts",

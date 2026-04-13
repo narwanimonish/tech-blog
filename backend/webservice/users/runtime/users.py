@@ -3,7 +3,8 @@ Unified users handler.
 Routes:
 - GET /users
 - GET /users/{userId}
-- PUT /users/{userId}
+- PUT /users/{userId}  (profile; **role** ignored)
+- PUT /users/{userId}/role  (admin: change role)
 - DELETE /users/{userId}
 """
 
@@ -13,6 +14,7 @@ import os
 
 import boto3
 from common import role_util, simple_api_util
+from common.errors import AppError
 from core.users.service import UsersService
 
 LOGGER = logging.getLogger()
@@ -30,6 +32,24 @@ SERVICE = UsersService(
     cognito_client=_COGNITO_CLIENT,
     user_pool_id=_USER_POOL_ID or None,
 )
+
+
+def _is_put_user_role(event: dict) -> bool:
+    """True when request is PUT /users/{userId}/role (pathParameters.userId matches path segment)."""
+    if (event.get("httpMethod") or "").upper() != "PUT":
+        return False
+    path = (event.get("path") or "").rstrip("/") or ""
+    if not path.startswith("/"):
+        path = "/" + path
+    parts = path.strip("/").split("/")
+    user_id = (event.get("pathParameters") or {}).get("userId")
+    return (
+        bool(user_id)
+        and len(parts) == 3
+        and parts[0] == "users"
+        and parts[1] == user_id
+        and parts[2] == "role"
+    )
 
 
 def lambda_handler(event, context):
@@ -52,6 +72,24 @@ def lambda_handler(event, context):
                 return simple_api_util.build_error_response("NOT_FOUND", "User not found", 404, request_id=request_id)
             return simple_api_util.build_response(200, item)
 
+        if _is_put_user_role(event):
+            body = event.get("body")
+            if not body:
+                return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
+            if "role" not in data:
+                return simple_api_util.build_error_response("BAD_REQUEST", "role is required", 400, request_id=request_id)
+            try:
+                updated = SERVICE.update_user_role(user_id, data["role"])
+            except AppError as err:
+                return simple_api_util.build_error_response(
+                    err.code, err.message, err.status_code, request_id=request_id
+                )
+            return simple_api_util.build_response(200, updated)
+
         if method == "PUT" and user_id:
             body = event.get("body")
             if not body:
@@ -60,6 +98,7 @@ def lambda_handler(event, context):
                 data = json.loads(body)
             except json.JSONDecodeError:
                 return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
+            data.pop("role", None)
             return simple_api_util.build_response(200, SERVICE.update_user(user_id, data))
 
         if method == "DELETE" and user_id:

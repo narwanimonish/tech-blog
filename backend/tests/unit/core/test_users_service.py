@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
-
+from common.errors import AppError
 from core.users.service import UsersService
 
 
@@ -97,6 +97,43 @@ def test_delete_user_cognito_ignores_user_not_found(mock_table):
     svc = UsersService(mock_table, cognito_client=cognito, user_pool_id="pool-id")
     svc.delete_user("sub-1")
     mock_table.delete_item.assert_called_once_with(Key={"userId": "sub-1"})
+
+
+def test_update_user_role_sets_role(mock_table):
+    mock_table.get_item.return_value = {"Item": {"userId": "u1", "email": "a@b.com", "role": "reader"}}
+    svc = UsersService(mock_table)
+    out = svc.update_user_role("u1", "writer")
+    assert out["role"] == "writer"
+    assert out["email"] == "a@b.com"
+    mock_table.put_item.assert_called_once()
+    item = mock_table.put_item.call_args[1]["Item"]
+    assert item["role"] == "writer"
+    assert item["userId"] == "u1"
+
+
+def test_update_user_role_normalizes_case(mock_table):
+    mock_table.get_item.return_value = {"Item": {"userId": "u1", "email": "a@b.com", "role": "reader"}}
+    svc = UsersService(mock_table)
+    out = svc.update_user_role("u1", "ADMIN")
+    assert out["role"] == "admin"
+
+
+@pytest.mark.parametrize("bad", ["", "superuser", "guest"])
+def test_update_user_role_invalid_raises(mock_table, bad):
+    mock_table.get_item.return_value = {"Item": {"userId": "u1", "role": "reader"}}
+    svc = UsersService(mock_table)
+    with pytest.raises(AppError) as exc:
+        svc.update_user_role("u1", bad)
+    assert exc.value.code == "BAD_REQUEST"
+    mock_table.put_item.assert_not_called()
+
+
+def test_update_user_role_missing_user_raises(mock_table):
+    mock_table.get_item.return_value = {}
+    svc = UsersService(mock_table)
+    with pytest.raises(AppError) as exc:
+        svc.update_user_role("missing", "writer")
+    assert exc.value.code == "NOT_FOUND"
 
 
 def test_delete_user_cognito_propagates_other_client_errors(mock_table):
