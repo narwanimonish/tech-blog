@@ -93,8 +93,26 @@ def _expand_effective_permissions(role_permissions: dict) -> set[str]:
     return effective
 
 
+# First URL segment for our routes (anything else is treated as API Gateway stage, e.g. /dev/users/...).
+_API_ROOT_SEGMENTS = frozenset({"users", "posts", "auth"})
+
+
+def _strip_stage_prefix(path: str) -> str:
+    """
+    API Gateway often includes the stage as the first path segment (e.g. /dev/users/...).
+    Strip it so normalization matches consolidated_api_permissions paths (/users/...).
+    """
+    if not path or not path.startswith("/"):
+        return path
+    parts = path.strip("/").split("/")
+    if len(parts) >= 2 and parts[0] not in _API_ROOT_SEGMENTS:
+        return "/" + "/".join(parts[1:])
+    return path
+
+
 def _normalize_path(path: str) -> str:
     """Convert request path to config path template, e.g. /users/abc-123 -> /users/{userId}."""
+    path = _strip_stage_prefix(path)
     if not path or not path.startswith("/"):
         return path
     parts = path.strip("/").split("/")
@@ -110,7 +128,13 @@ def _normalize_path(path: str) -> str:
 
 
 def _get_required_permissions(path: str, method: str) -> list[str]:
-    normalized = _normalize_path(path)
+    """
+    path may be API Gateway `resource` (e.g. /users/{userId}/role) or a raw `path` (/users/u1/role or /dev/users/u1/role).
+    """
+    if path and "{" in path:
+        normalized = path
+    else:
+        normalized = _normalize_path(path)
     apis = _get_api_permissions_config()
     for api in apis:
         if api.get("path") == normalized and (api.get("method") or "").upper() == (method or "").upper():
@@ -155,8 +179,11 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     Uses role from DynamoDB users table (key "role"); default role is "reader".
     Returns (allowed: bool, error_message: str). If allowed, error_message is empty.
     """
-    # API Gateway proxy: path is the actual request path (e.g. /users/abc-123)
-    path = (event.get("path") or event.get("requestContext", {}).get("path") or event.get("resource") or "").strip()
+    # Prefer `resource` (path template /users/{userId}/role); else raw path (may include stage prefix /dev/...).
+    path = (
+        (event.get("resource") or "").strip()
+        or (event.get("path") or event.get("requestContext", {}).get("path") or "").strip()
+    )
     method = (event.get("httpMethod") or "").upper()
     authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
     sub = user_id or authorizer.get("sub") or authorizer.get("principalId") or ""

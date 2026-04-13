@@ -116,7 +116,7 @@ Three access levels (aligned with service-level permissions):
 - **writer** — `users.view`, `posts.manage` (can create/update/delete posts).
 - **reader** — `users.view`, `posts.view` (read-only).
 
-User **role** is stored in the DynamoDB **users** table (`role` field). New users get `reader` by default (set in post-confirmation and preserved on login upsert). To make a user admin, set `role` to `admin` in the users table.
+User **role** is stored in the DynamoDB **users** table (`role` field). New users get `reader` by default (set in post-confirmation and preserved on login upsert). **Admins** change roles through the API: **`PUT /users/{userId}/role`** with body `{"role":"admin"|"writer"|"reader"}` (requires **users.fullaccess**). The generic **`PUT /users/{userId}`** profile update **ignores** a `role` field if present; use the role endpoint only for role changes.
 
 **Flow:** Before handling a request, the users and posts handlers call `role_util.is_user_action_valid(event)`. That looks up the user’s role from the users table, resolves the required permission for the API path/method from `consolidated_api_permissions.json`, and checks the role’s permissions from `role_permissions.json` (with hierarchy: fullaccess ≥ manage ≥ view). If the check fails, the handler returns **403 Forbidden** with `errorCode: FORBIDDEN`.
 
@@ -205,7 +205,8 @@ Set `accessToken` environment variable from `accessToken` in this response.
     {
       "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344",
       "email": "utkarsh.tehlan+1@cloudwick.com",
-      "name": "Utkarsh"
+      "name": "Utkarsh",
+      "role": "reader"
     }
   ]
 }
@@ -219,7 +220,8 @@ Set `accessToken` environment variable from `accessToken` in this response.
 {
   "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344",
   "email": "utkarsh.tehlan+1@cloudwick.com",
-  "name": "Utkarsh"
+  "name": "Utkarsh",
+  "role": "reader"
 }
 ```
 
@@ -231,7 +233,9 @@ Set `accessToken` environment variable from `accessToken` in this response.
 }
 ```
 
-#### `PUT {{baseUrl}}/users/{{userId}}`
+#### `PUT {{baseUrl}}/users/{{userId}}` (profile only)
+
+Updates **email** and **name** only. A **`role`** field in the body is **not** applied (use **`PUT .../role`** below).
 
 **Body** (raw JSON):
 
@@ -249,6 +253,39 @@ Set `accessToken` environment variable from `accessToken` in this response.
   "email": "utkarsh.tehlan+1@cloudwick.com",
   "name": "Utkarsh Updated",
   "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344"
+}
+```
+
+#### `PUT {{baseUrl}}/users/{{userId}}/role` (admin only)
+
+Sets the user’s **role** to **`admin`**, **`writer`**, or **`reader`** (any transition). Caller must have **users.fullaccess** (typically the **admin** role). See `api-spec.yaml` for the full schema.
+
+**Body** (raw JSON):
+
+```json
+{
+  "role": "writer"
+}
+```
+
+**200 Response** (full user record after update):
+
+```json
+{
+  "userId": "5418f4c8-40d1-7024-8d83-e627f08e1344",
+  "email": "utkarsh.tehlan+1@cloudwick.com",
+  "name": "Utkarsh",
+  "role": "writer"
+}
+```
+
+**403 Response** (non-admin):
+
+```json
+{
+  "errorCode": "FORBIDDEN",
+  "message": "Insufficient permission: requires users.fullaccess",
+  "requestId": "..."
 }
 ```
 
@@ -354,7 +391,8 @@ Set `accessToken` environment variable from `accessToken` in this response.
 
 ### Common error responses
 
-- `400`: invalid request body/path parameters
+- `400`: invalid request body/path parameters (e.g. invalid `role` on **`PUT .../role`**)
 - `401`: missing/invalid bearer token (or bad login credentials in `/auth/login`)
-- `403`: user not confirmed (login flow)
+- `403`: user not confirmed (login), or **RBAC** denied (e.g. non-admin calling **`PUT .../role`** or insufficient permission for the route)
+- `404`: user or post not found (and similar)
 - `500`: internal server error
