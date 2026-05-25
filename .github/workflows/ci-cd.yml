@@ -93,11 +93,13 @@ jobs:
         run: npm install -g aws-cdk
 
       - name: Install infrastructure dependencies
-        run: pip install -r infrastructure/requirements.txt
+        run: python -m pip install -r infrastructure/requirements.txt
 
       - name: Build Lambda layer bundle
         run: python backend/build.py
 
       - name: CDK deploy all stacks
         working-directory: infrastructure
+        env:
+          PATH: ${{ env.pythonLocation }}:${{ env.PATH }}
         run: cdk deploy --all --require-approval never
