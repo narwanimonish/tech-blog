@@ -1,0 +1,33 @@
+---
+alwaysApply: false
+---
+# Backend Lambda playbook (align with docs/BACKEND_PLAYBOOK_PROMPTS.md)
+
+When adding or changing APIs, Lambdas, or infra, prefer this structure unless the user says otherwise.
+
+## Layout
+- **Handlers** (thin): parse event, validate input, call `role_util` (or equivalent), call service, return via `simple_api_util` / shared response helpers.
+- **Services** (domain): business logic, persistence via small DB helpers—not raw boto3 scattered in handlers.
+- **common** (layer or package): `dynamodb_util`, response builders, `error_mapper`, `errors.AppError`, RBAC config + `is_user_action_valid(event)`.
+- **Infra**: Lambda settings (timeout, memory, concurrency) in a JSON/YAML file read by CDK; env vars for table names and IDs.
+
+## Errors
+- One shape: `errorCode`, `message`, `requestId`, optional `details`.
+- Handlers use `build_error_response` / `build_error_from_exception`; map AWS `ClientError` and app exceptions through a single mapper.
+- Avoid logging tokens or full PII.
+
+## RBAC (if used)
+- Data-driven JSON: `service_level_permissions`, `consolidated_api_permissions` (path + **method** → required permissions), `role_permissions` + `default_role`.
+- Normalize API Gateway paths: support `resource`, `resourcePath`, stage prefixes (`/dev/...`), and `httpMethod` / `requestContext.httpMethod` / HTTP API v2 fields.
+- Handler: if `is_user_action_valid` fails → **403** with `FORBIDDEN`, standard error shape; no business logic.
+
+## API contract
+- Update **OpenAPI** (`api-spec.yaml` or project equivalent) when routes, bodies, or errors change.
+- Add **pytest**: service tests with mocks; handler tests with patched service + RBAC.
+
+## Security
+- JWT/token validation in API Gateway authorizer (or one shared place), not duplicated per handler.
+- IAM: grant specific table/queue ARNs; avoid `*` on data-plane resources where possible.
+
+## CI
+- Lint + unit tests on push/PR; document run commands from **repository root** (paths like `infrastructure/requirements-dev.txt` are relative to root).

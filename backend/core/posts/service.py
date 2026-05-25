@@ -11,7 +11,6 @@ from common import dynamodb_util
 
 LOGGER = logging.getLogger(__name__)
 
-
 class PostsService:
     """Service for posts table operations."""
 
