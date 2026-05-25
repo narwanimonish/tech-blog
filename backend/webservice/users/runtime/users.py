@@ -24,9 +24,7 @@ TABLE_NAME = os.environ.get("usersStoreTable", "users-store")
 TABLE = boto3.resource("dynamodb").Table(TABLE_NAME)
 _USER_POOL_ID = os.environ.get("USER_POOL_ID", "").strip()
 _POOL_REGION = os.environ.get("USER_POOL_REGION", os.environ.get("AWS_REGION", "us-east-1"))
-_COGNITO_CLIENT = (
-    boto3.client("cognito-idp", region_name=_POOL_REGION) if _USER_POOL_ID else None
-)
+_COGNITO_CLIENT = boto3.client("cognito-idp", region_name=_POOL_REGION) if _USER_POOL_ID else None
 SERVICE = UsersService(
     TABLE,
     cognito_client=_COGNITO_CLIENT,
@@ -43,13 +41,7 @@ def _is_put_user_role(event: dict) -> bool:
         path = "/" + path
     parts = path.strip("/").split("/")
     user_id = (event.get("pathParameters") or {}).get("userId")
-    return (
-        bool(user_id)
-        and len(parts) == 3
-        and parts[0] == "users"
-        and parts[1] == user_id
-        and parts[2] == "role"
-    )
+    return bool(user_id) and len(parts) == 3 and parts[0] == "users" and parts[1] == user_id and parts[2] == "role"
 
 
 def lambda_handler(event, context):
@@ -85,9 +77,7 @@ def lambda_handler(event, context):
             try:
                 updated = SERVICE.update_user_role(user_id, data["role"])
             except AppError as err:
-                return simple_api_util.build_error_response(
-                    err.code, err.message, err.status_code, request_id=request_id
-                )
+                return simple_api_util.build_error_response(err.code, err.message, err.status_code, request_id=request_id)
             return simple_api_util.build_response(200, updated)
 
         if method == "PUT" and user_id:
