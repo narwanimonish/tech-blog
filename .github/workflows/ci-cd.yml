@@ -89,9 +89,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Install CDK CLI
-        run: npm install -g aws-cdk
-
       - name: Install infrastructure dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
@@ -100,6 +97,4 @@ jobs:
 
       - name: CDK deploy all stacks
         working-directory: infrastructure
-        env:
-          PATH: ${{ env.pythonLocation }}:${{ env.PATH }}
-        run: cdk deploy --all --require-approval never
+        run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
