@@ -2,7 +2,8 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export function Layout() {
-  const { email, currentUser, logout, loading } = useAuth();
+  const { email, currentUser, logout, loading, isAdmin } = useAuth();
+  const profilePath = currentUser ? `/users/${currentUser.userId}` : "/users";
 
   return (
     <div className="app-shell">
@@ -22,7 +23,11 @@ export function Layout() {
 
       <nav className="nav">
         <NavLink to="/posts">Posts</NavLink>
-        <NavLink to="/users">Users</NavLink>
+        {isAdmin ? (
+          <NavLink to="/users">Users</NavLink>
+        ) : (
+          <NavLink to={profilePath}>Profile</NavLink>
+        )}
       </nav>
 
       <Outlet />

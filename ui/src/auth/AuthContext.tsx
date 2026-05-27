@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { decodeJwtPayload, getUser, listUsers, login as apiLogin } from "../api/client";
+import { decodeJwtPayload, getUser, login as apiLogin } from "../api/client";
 import type { Role, User } from "../types";
 
 const TOKEN_KEY = "tech_blog_access_token";
@@ -45,22 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const payload = decodeJwtPayload(token);
     const sub = typeof payload.sub === "string" ? payload.sub : null;
-    if (sub) {
-      try {
-        setCurrentUser(await getUser(token, sub));
-        return;
-      } catch {
-        // Fall back to scanning the user list below.
-      }
+    if (!sub) {
+      setCurrentUser(null);
+      return;
     }
-
-    const users = await listUsers(token);
-    const match =
-      users.find((user) => user.email === email) ??
-      users.find((user) => user.userId === sub) ??
-      null;
-    setCurrentUser(match);
-  }, [token, email]);
+    setCurrentUser(await getUser(token, sub));
+  }, [token]);
 
   useEffect(() => {
     if (!token) {

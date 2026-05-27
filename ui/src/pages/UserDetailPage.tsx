@@ -15,7 +15,7 @@ const ROLES: Role[] = ["admin", "writer", "reader"];
 export function UserDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const { token, isAdmin } = useAuth();
+  const { token, isAdmin, currentUser, loading: authLoading } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +46,10 @@ export function UserDetailPage() {
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!authLoading && !isAdmin && currentUser && userId !== currentUser.userId) {
+    return <Navigate to={`/users/${currentUser.userId}`} replace />;
   }
 
   if (!userId) {
@@ -108,8 +112,8 @@ export function UserDetailPage() {
 
   return (
     <div className="stack">
-      <Link to="/users" className="back-link">
-        ← Back to users
+      <Link to={isAdmin ? "/users" : `/users/${currentUser?.userId ?? userId}`} className="back-link">
+        ← {isAdmin ? "Back to users" : "Back to profile"}
       </Link>
 
       {loading ? (
@@ -125,7 +129,7 @@ export function UserDetailPage() {
           <div className="card stack">
             <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <h2 style={{ margin: 0 }}>{user.email}</h2>
+                <h2 style={{ margin: 0 }}>{isAdmin ? user.email : "My profile"}</h2>
                 <p className="muted" style={{ margin: "8px 0 0" }}>
                   {user.name ?? "No name"} · <span className="badge">{user.role}</span>
                 </p>

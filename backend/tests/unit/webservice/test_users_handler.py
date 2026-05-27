@@ -49,22 +49,40 @@ def test_get_user_by_id_returns_200_when_found(mock_context, mock_service):
     }
     event = api_event("GET", "/users/u1", path_params={"userId": "u1"})
     event["path"] = "/users/u1"
+    event["requestContext"]["authorizer"] = {"sub": "u1"}
     with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
-        with patch("runtime.users.SERVICE", mock_service):
-            resp = users_lambda_handler(event, mock_context)
+        with patch.object(users_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.users.SERVICE", mock_service):
+                resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert body["userId"] == "u1"
     assert body["email"] == "a@b.com"
 
 
+def test_get_user_by_id_returns_403_when_not_own_profile(mock_context, mock_service):
+    event = api_event("GET", "/users/u2", path_params={"userId": "u2"})
+    event["path"] = "/users/u2"
+    event["requestContext"]["authorizer"] = {"sub": "u1"}
+    with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(users_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.users.SERVICE", mock_service):
+                resp = users_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 403
+    body = json.loads(resp["body"])
+    assert body.get("errorCode") == "FORBIDDEN"
+    mock_service.get_user.assert_not_called()
+
+
 def test_get_user_by_id_returns_404_when_not_found(mock_context, mock_service):
     mock_service.get_user.return_value = None
     event = api_event("GET", "/users/u1", path_params={"userId": "u1"})
     event["path"] = "/users/u1"
+    event["requestContext"]["authorizer"] = {"sub": "u1"}
     with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
-        with patch("runtime.users.SERVICE", mock_service):
-            resp = users_lambda_handler(event, mock_context)
+        with patch.object(users_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.users.SERVICE", mock_service):
+                resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 404
     body = json.loads(resp["body"])
     assert body.get("errorCode") == "NOT_FOUND"
@@ -162,7 +180,7 @@ def test_rbac_denied_returns_403(mock_context, mock_service):
     with patch.object(
         users_module.role_util,
         "is_user_action_valid",
-        return_value=(False, "Insufficient permission: requires users.view"),
+        return_value=(False, "Insufficient permission: requires users.fullaccess"),
     ):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)

@@ -3,13 +3,13 @@
     {
       "path": "/users",
       "method": "GET",
-      "description": "List all users",
-      "permissions": ["users.view"]
+      "description": "List all users (admin only)",
+      "permissions": ["users.fullaccess"]
     },
     {
       "path": "/users/{userId}",
       "method": "GET",
-      "description": "Get user by ID",
+      "description": "Get user by ID (own profile, or any user for admin)",
       "permissions": ["users.view"]
     },
     {

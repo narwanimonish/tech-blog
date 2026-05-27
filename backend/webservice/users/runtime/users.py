@@ -44,6 +44,30 @@ def _is_put_user_role(event: dict) -> bool:
     return bool(user_id) and len(parts) == 3 and parts[0] == "users" and parts[1] == user_id and parts[2] == "role"
 
 
+def _caller_sub(event: dict) -> str:
+    authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
+    return authorizer.get("sub") or authorizer.get("principalId") or ""
+
+
+def _caller_is_admin(event: dict) -> bool:
+    sub = _caller_sub(event)
+    if not sub:
+        return False
+    role = role_util._get_user_role(sub, TABLE_NAME)
+    return role == "admin"
+
+
+def _ensure_self_or_admin(event: dict, target_user_id: str) -> tuple[bool, str]:
+    if _caller_is_admin(event):
+        return True, ""
+    caller = _caller_sub(event)
+    if not caller:
+        return False, "Missing user identity (sub)"
+    if caller != target_user_id:
+        return False, "You can only access your own profile"
+    return True, ""
+
+
 def lambda_handler(event, context):
     request_id = getattr(context, "aws_request_id", "unknown")
     method = (event.get("httpMethod") or "").upper()
@@ -59,6 +83,9 @@ def lambda_handler(event, context):
             return simple_api_util.build_response(200, {"items": items})
 
         if method == "GET" and user_id:
+            allowed_self, self_msg = _ensure_self_or_admin(event, user_id)
+            if not allowed_self:
+                return simple_api_util.build_error_response("FORBIDDEN", self_msg, 403, request_id=request_id)
             item = SERVICE.get_user(user_id)
             if not item:
                 return simple_api_util.build_error_response("NOT_FOUND", "User not found", 404, request_id=request_id)

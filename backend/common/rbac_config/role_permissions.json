@@ -8,12 +8,12 @@
     "writer": {
       "users": "view",
       "posts": "manage",
-      "description": "Can read users; can create, update, delete posts."
+      "description": "Can view own profile only; can create, update, delete posts."
     },
     "reader": {
       "users": "view",
       "posts": "view",
-      "description": "Read-only access to users and posts."
+      "description": "Can view own profile only; read-only access to posts."
     }
   },
   "default_role": "reader"
