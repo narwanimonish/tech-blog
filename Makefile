@@ -1,7 +1,7 @@
 # Tech-blog — TaskMaster-style orchestration names (thin wrappers).
 # Run from repository root: cd /path/to/tech-blog
 
-.PHONY: test lint generate cdk-synth ui-install ui-build help
+.PHONY: test lint generate cdk-synth ui-install ui-build ui-deploy help
 
 PYTHON ?= python3
 PYTEST = PYTHONPATH=backend $(PYTHON) -m pytest backend/tests
@@ -12,8 +12,9 @@ help:
 	@echo "  make test        - pytest backend/tests (needs: pip install -r infrastructure/requirements-dev.txt)"
 	@echo "  make lint        - ruff check + format --check on backend/"
 	@echo "  make generate    - placeholder: OpenAPI -> Python/TS codegen (not wired yet)"
-	@echo "  make ui-build    - npm run build in ui/ (required before cdk-synth/deploy)"
-	@echo "  make cdk-synth   - CDK synth (needs: cd infrastructure && deps + AWS account/region)"
+	@echo "  make ui-deploy   - sync ui/dist to S3 + invalidate CloudFront (after cdk deploy)"
+	@echo "  make ui-build    - npm run build in ui/"
+	@echo "  make cdk-synth   - CDK synth (backend layer build + synth)"
 
 test:
 	$(PYTEST) -v
@@ -27,7 +28,7 @@ generate:
 	@echo "  e.g. openapi-python-client generate --path backend/api-spec.yaml ..."
 	@exit 0
 
-cdk-synth: ui-build
+cdk-synth:
 	python backend/build.py
 	cd infrastructure && APP_ENV=dev CDK_DEFAULT_ACCOUNT=111111111111 CDK_DEFAULT_REGION=us-east-1 \
 		npx --yes aws-cdk@2.114.1 synth
@@ -37,3 +38,6 @@ ui-install:
 
 ui-build:
 	cd ui && npm ci && npm run build
+
+ui-deploy: ui-build
+	bash scripts/deploy-frontend.sh

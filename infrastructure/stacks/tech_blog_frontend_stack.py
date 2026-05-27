@@ -1,5 +1,8 @@
 """
-Static frontend: S3 + CloudFront. Deploy after API stack (needs ApiUrl for runtime config.json).
+Static frontend: S3 + CloudFront.
+
+Upload ui/dist after deploy (see scripts/deploy-frontend.sh and CI).
+CDK only provisions the bucket and distribution — avoids BucketDeployment asset failures.
 """
 
 from __future__ import annotations
@@ -7,15 +10,11 @@ from __future__ import annotations
 from aws_cdk import (
     CfnOutput,
     Duration,
-    Fn,
     RemovalPolicy,
     Stack,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
-    aws_iam as iam,
     aws_s3 as s3,
-    aws_s3_deployment as s3deploy,
-    custom_resources as cr,
 )
 
 from config.dev import DevConfig
@@ -31,13 +30,10 @@ class TechBlogFrontendStack(Stack):
         scope: Construct,
         construct_id: str,
         config: DevConfig | ProdConfig,
-        api_url_export_name: str,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
         app_name = config.APP_NAME
-        api_url = Fn.import_value(api_url_export_name)
-        config_body = Fn.join("", ['{"apiUrl":"', api_url, '"}'])
 
         website_bucket = s3.Bucket(
             self,
@@ -86,88 +82,8 @@ class TechBlogFrontendStack(Stack):
             ],
         )
 
-        website_deployment = s3deploy.BucketDeployment(
-            self,
-            "DeployWebsite",
-            sources=[s3deploy.Source.asset("../ui/dist")],
-            destination_bucket=website_bucket,
-            distribution=distribution,
-            distribution_paths=["/*"],
-        )
-
-        # BucketDeployment json_data cannot use Fn::ImportValue; write config at deploy time instead.
-        write_config = cr.AwsCustomResource(
-            self,
-            "WriteRuntimeConfig",
-            on_create=cr.AwsSdkCall(
-                service="S3",
-                action="putObject",
-                parameters={
-                    "Bucket": website_bucket.bucket_name,
-                    "Key": "config.json",
-                    "Body": config_body,
-                    "ContentType": "application/json",
-                    "CacheControl": "no-cache, no-store, must-revalidate",
-                },
-                physical_resource_id=cr.PhysicalResourceId.of(f"{app_name}-runtime-config"),
-            ),
-            on_update=cr.AwsSdkCall(
-                service="S3",
-                action="putObject",
-                parameters={
-                    "Bucket": website_bucket.bucket_name,
-                    "Key": "config.json",
-                    "Body": config_body,
-                    "ContentType": "application/json",
-                    "CacheControl": "no-cache, no-store, must-revalidate",
-                },
-                physical_resource_id=cr.PhysicalResourceId.of(f"{app_name}-runtime-config"),
-            ),
-            policy=cr.AwsCustomResourcePolicy.from_statements(
-                [
-                    iam.PolicyStatement(
-                        actions=["s3:PutObject"],
-                        resources=[website_bucket.arn_for_objects("config.json")],
-                    ),
-                ]
-            ),
-        )
-        write_config.node.add_dependency(website_deployment)
-
-        invalidate_config = cr.AwsCustomResource(
-            self,
-            "InvalidateConfigCache",
-            on_create=cr.AwsSdkCall(
-                service="CloudFront",
-                action="createInvalidation",
-                parameters={
-                    "DistributionId": distribution.distribution_id,
-                    "InvalidationBatch": {
-                        "CallerReference": Fn.join("-", [app_name, "config", api_url]),
-                        "Paths": {"Quantity": 1, "Items": ["/config.json"]},
-                    },
-                },
-                physical_resource_id=cr.PhysicalResourceId.from_response("Invalidation.Id"),
-            ),
-            on_update=cr.AwsSdkCall(
-                service="CloudFront",
-                action="createInvalidation",
-                parameters={
-                    "DistributionId": distribution.distribution_id,
-                    "InvalidationBatch": {
-                        "CallerReference": Fn.join("-", [app_name, "config", api_url]),
-                        "Paths": {"Quantity": 1, "Items": ["/config.json"]},
-                    },
-                },
-                physical_resource_id=cr.PhysicalResourceId.from_response("Invalidation.Id"),
-            ),
-            policy=cr.AwsCustomResourcePolicy.from_sdk_calls(
-                resources=cr.AwsCustomResourcePolicy.ANY_RESOURCE
-            ),
-        )
-        invalidate_config.node.add_dependency(write_config)
-
         self.distribution = distribution
+        self.website_bucket = website_bucket
         self.frontend_url = f"https://{distribution.distribution_domain_name}"
 
         CfnOutput(
@@ -181,4 +97,10 @@ class TechBlogFrontendStack(Stack):
             "WebsiteBucketName",
             value=website_bucket.bucket_name,
             description="S3 bucket backing the frontend",
+        )
+        CfnOutput(
+            self,
+            "DistributionId",
+            value=distribution.distribution_id,
+            description="CloudFront distribution ID (for cache invalidation)",
         )

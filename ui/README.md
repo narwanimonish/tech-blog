@@ -49,11 +49,16 @@ Role-based UI:
 
 ## Production (CloudFront)
 
-CI/CD builds `ui/dist` and CDK deploys it via **TechBlogFrontendStack** (S3 + CloudFront).
+CDK provisions **S3 + CloudFront** (`TechBlogFrontendStack`). Static files are uploaded **after** `cdk deploy`:
 
-At deploy time, CDK uploads a `config.json` with the live **ApiUrl** so the SPA does not need a rebuild when the API endpoint changes.
+```bash
+make ui-deploy
+# or: bash scripts/deploy-frontend.sh
+```
 
-After deploy, get the site URL:
+This syncs `ui/dist`, writes `config.json` with the live **ApiUrl**, and invalidates CloudFront.
+
+CI runs the same script automatically after `cdk deploy --all`.
 
 ```bash
 aws cloudformation describe-stacks \

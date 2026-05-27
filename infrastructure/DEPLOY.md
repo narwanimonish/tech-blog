@@ -64,7 +64,7 @@ npm ci
 npm run build
 ```
 
-Or `make ui-build`. CDK uploads `ui/dist` via **TechBlogFrontendStack** and injects `config.json` with the live API URL.
+Or `make ui-build`. CDK only creates the S3 bucket and CloudFront distribution; upload assets with `make ui-deploy` (see below).
 
 ## 2. Install CDK dependencies
 
@@ -89,7 +89,13 @@ cdk deploy TechBlogLambdaStack
 cdk deploy TechBlogApiStack
 ```
 
-CDK will respect dependencies (Data → Auth → Lambda → Api). Approve IAM changes when prompted.
+CDK will respect dependencies (Data → Auth → Lambda → Api → Frontend infra). Approve IAM changes when prompted.
+
+Upload the built UI to S3 and invalidate CloudFront:
+
+```bash
+make ui-deploy
+```
 
 ### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack"
 
