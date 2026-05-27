@@ -6,10 +6,10 @@ Workflow: [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)
 
 | Trigger | Lint + test | CDK synth (dev & prod) | Deploy dev | Deploy prod |
 |---------|-------------|-------------------------|------------|-------------|
-| Push (any branch) | Yes | Yes | Only **`main`** | Yes (temporary) |
+| Push (any branch) | Yes | Yes | Manual only | Yes (`APP_ENV=dev`) |
 | Pull request | Yes | Yes | No | No |
 | Manual **dev** | Yes | Yes | Yes | No |
-| Manual **prod** | Yes | Yes | No | Yes |
+| Manual **prod** | Yes | Yes | No | Yes (`APP_ENV=dev`) |
 
 ## One-time GitHub setup
 
@@ -32,6 +32,12 @@ Workflow: [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)
 - **`APP_ENV=prod`** → `ProdConfig` (table names include `-prod-`).
 
 Use **separate AWS accounts** (or at minimum separate roles with scoped policies) for development vs production.
+
+### Why deploy uses `APP_ENV=dev` for now
+
+Existing CloudFormation stacks (`TechBlogDataStack`, etc.) were created with **`APP_ENV=dev`**. Deploying with **`APP_ENV=prod`** makes CDK try to **rename** DynamoDB tables (`tech-blog-dev-*` → `tech-blog-prod-*`) inside the same stack, which CloudFormation cannot do in place — the update rolls back with **`UPDATE_ROLLBACK_COMPLETE`**.
+
+Until env-suffixed stack names and resource names exist in a **separate prod account**, CI deploy jobs keep **`APP_ENV=dev`**.
 
 After each deploy, the pipeline runs a **smoke test**: it reads the `TechBlogApiStack` `ApiUrl` output and calls `GET /posts` without credentials. A **401 or 403** confirms API Gateway and the authorizer are reachable.
 

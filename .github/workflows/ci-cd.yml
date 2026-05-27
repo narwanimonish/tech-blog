@@ -2,9 +2,12 @@ name: CI/CD Pipeline
 
 # Flow:
 #   PR / push (any branch): lint + test + cdk synth (dev + prod configs)
-#   Push (any branch):      deploy to production (APP_ENV=prod) — temporary for active development
-#   Push to main:           also deploy to development (APP_ENV=dev)
-#   workflow_dispatch:      manual dev or prod deploy
+#   Push (any branch):      deploy (APP_ENV=dev — matches existing CloudFormation stacks)
+#   workflow_dispatch:      manual dev or prod deploy (both use APP_ENV=dev for now)
+#
+# NOTE: APP_ENV=prod cannot deploy into the existing TechBlogDataStack yet — it would try
+# to rename DynamoDB tables (dev → prod) and roll back. Real prod needs env-suffixed stacks
+# and resource names in a separate AWS account.
 #
 # GitHub setup: Settings → Environments → create "development" and "production"
 #   Add secret AWS_ROLE_ARN in each (use different IAM roles / accounts for prod).
@@ -130,14 +133,12 @@ jobs:
       - lint
       - test
       - synth
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'dev')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'dev'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: development
     concurrency:
-      group: deploy-development
+      group: deploy-${{ github.ref }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -202,13 +203,14 @@ jobs:
     timeout-minutes: 45
     environment: production
     concurrency:
-      group: deploy-production
+      group: deploy-${{ github.ref }}
       cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
     env:
-      APP_ENV: prod
+      # Existing stacks/tables use dev names (tech-blog-dev-*). APP_ENV=prod breaks Data stack updates.
+      APP_ENV: dev
       AWS_DEFAULT_REGION: us-east-1
     steps:
       - uses: actions/checkout@v4
@@ -237,11 +239,11 @@ jobs:
       - name: Build Lambda layer bundle
         run: python backend/build.py
 
-      - name: CDK deploy (production)
+      - name: CDK deploy
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
 
-      - name: Smoke test API (production)
+      - name: Smoke test API
         run: |
           API_URL=$(aws cloudformation describe-stacks \
             --stack-name TechBlogApiStack \
