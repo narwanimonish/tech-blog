@@ -1,7 +1,14 @@
 name: CI/CD Pipeline
 
-# Lint → test → deploy (main only) in one workflow.
-# Requires GitHub secret: AWS_ROLE_ARN (OIDC trust to your AWS account).
+# Flow:
+#   PR / push (any branch): lint + test + cdk synth (dev + prod configs)
+#   Push (any branch):      deploy to production (APP_ENV=prod) — temporary for active development
+#   Push to main:           also deploy to development (APP_ENV=dev)
+#   workflow_dispatch:      manual dev or prod deploy
+#
+# GitHub setup: Settings → Environments → create "development" and "production"
+#   Add secret AWS_ROLE_ARN in each (use different IAM roles / accounts for prod).
+#   On "production": enable Required reviewers (and optional wait timer).
 
 on:
   push:
@@ -11,19 +18,28 @@ on:
     branches:
       - "**"
   workflow_dispatch:
+    inputs:
+      target:
+        description: Manual deploy target
+        required: true
+        type: choice
+        default: dev
+        options:
+          - dev
+          - prod
 
 concurrency:
-  group: ci-cd-${{ github.ref }}
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   lint:
     name: Lint & format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -32,9 +48,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: infrastructure/requirements-dev.txt
 
       - name: Install Ruff
-        run: pip install ruff
+        run: pip install -r infrastructure/requirements-dev.txt
 
       - name: Ruff check
         run: ruff check --output-format=github backend/
@@ -45,6 +62,7 @@ jobs:
   test:
     name: Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       AWS_DEFAULT_REGION: us-east-1
     steps:
@@ -63,18 +81,77 @@ jobs:
       - name: Pytest
         run: PYTHONPATH=backend python -m pytest backend/tests -v
 
-  deploy:
-    name: Deploy to AWS (CDK)
-    runs-on: ubuntu-latest
+  synth:
+    name: CDK synth (${{ matrix.app_env }})
     needs:
       - lint
       - test
-    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app_env:
+          - dev
+          - prod
     env:
+      APP_ENV: ${{ matrix.app_env }}
       AWS_DEFAULT_REGION: us-east-1
-      APP_ENV: dev
+      CDK_DEFAULT_ACCOUNT: "111111111111"
+      CDK_DEFAULT_REGION: us-east-1
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: infrastructure/requirements.txt
+
+      - name: Install CDK dependencies
+        run: python -m pip install -r infrastructure/requirements.txt
+
+      - name: Build Lambda layer bundle
+        run: python backend/build.py
+
+      - name: CDK synth
+        working-directory: infrastructure
+        run: npx --yes aws-cdk@2.114.1 synth --quiet
+
+  deploy-dev:
+    name: Deploy → development
+    needs:
+      - lint
+      - test
+      - synth
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'dev')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: development
+    concurrency:
+      group: deploy-development
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP_ENV: dev
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -89,12 +166,90 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Install infrastructure dependencies
+      - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
       - name: Build Lambda layer bundle
         run: python backend/build.py
 
-      - name: CDK deploy all stacks
+      - name: CDK deploy (development)
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
+
+      - name: Smoke test API (development)
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name TechBlogApiStack \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+          test -n "$API_URL"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${API_URL}posts")
+          if [[ "$HTTP_CODE" != "401" && "$HTTP_CODE" != "403" ]]; then
+            echo "Expected 401/403 from protected route, got $HTTP_CODE"
+            exit 1
+          fi
+
+  deploy-prod:
+    name: Deploy → production
+    needs:
+      - lint
+      - test
+      - synth
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'prod')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP_ENV: prod
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: infrastructure/requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Install CDK dependencies
+        run: python -m pip install -r infrastructure/requirements.txt
+
+      - name: Build Lambda layer bundle
+        run: python backend/build.py
+
+      - name: CDK deploy (production)
+        working-directory: infrastructure
+        run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
+
+      - name: Smoke test API (production)
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name TechBlogApiStack \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+          test -n "$API_URL"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${API_URL}posts")
+          if [[ "$HTTP_CODE" != "401" && "$HTTP_CODE" != "403" ]]; then
+            echo "Expected 401/403 from protected route, got $HTTP_CODE"
+            exit 1
+          fi

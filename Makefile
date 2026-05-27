@@ -27,5 +27,6 @@ generate:
 	@exit 0
 
 cdk-synth:
-	@command -v cdk >/dev/null 2>&1 || (echo "Install CDK CLI: npm install -g aws-cdk"; exit 1)
-	cd infrastructure && cdk synth
+	python backend/build.py
+	cd infrastructure && APP_ENV=dev CDK_DEFAULT_ACCOUNT=111111111111 CDK_DEFAULT_REGION=us-east-1 \
+		npx --yes aws-cdk@2.114.1 synth
