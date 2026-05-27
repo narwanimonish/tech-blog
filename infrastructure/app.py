@@ -8,6 +8,7 @@ from config import env_config
 from stacks.tech_blog_api_stack import TechBlogApiStack
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
+from stacks.tech_blog_frontend_stack import TechBlogFrontendStack
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
 app = cdk.App()
@@ -73,6 +74,16 @@ api_stack = TechBlogApiStack(
     env=cdk_env,
 )
 api_stack.add_dependency(lambda_stack)
+
+# 5. Static frontend (S3 + CloudFront) – needs API URL for runtime config.json
+frontend_stack = TechBlogFrontendStack(
+    app,
+    "TechBlogFrontendStack",
+    config=env_config,
+    api_url=api_stack.api_url,
+    env=cdk_env,
+)
+frontend_stack.add_dependency(api_stack)
 
 
 app.synth()

@@ -10,6 +10,7 @@ Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (
 | **TechBlogAuthStack** | Cognito User Pool + App Client + Hosted UI domain + Post-confirmation Lambda (populates users table). Depends on Data. |
 | **TechBlogLambdaStack** | Shared layer + unified users/posts Lambdas + auth login (legacy per-route Lambdas kept until API stack is updated). Depends on Data and Auth. |
 | **TechBlogApiStack** | API Gateway, custom Lambda authorizer, all routes. Depends on Lambda. |
+| **TechBlogFrontendStack** | React SPA on S3 + CloudFront (`ui/dist`). Depends on API (for `config.json` ApiUrl). |
 
 ## Prerequisites
 
@@ -52,6 +53,18 @@ python build.py
 ```
 
 Creates `backend/layer_bundle/python/{common,core}` for the Lambda layer.
+
+## 1b. Build frontend
+
+From repo root:
+
+```bash
+cd ui
+npm ci
+npm run build
+```
+
+Or `make ui-build`. CDK uploads `ui/dist` via **TechBlogFrontendStack** and injects `config.json` with the live API URL.
 
 ## 2. Install CDK dependencies
 
@@ -106,6 +119,7 @@ The **live** API stack in AWS still imports the old Lambda exports. You must upd
 - **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack).
 - **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`, `CognitoDomainUrl` (Hosted UI base URL; “View login page” in console uses this).
 - **TechBlogApiStack**: `ApiUrl` (API Gateway base URL).
+- **TechBlogFrontendStack**: `FrontendUrl` (CloudFront URL for the UI), `WebsiteBucketName`.
 
 ## 5. Using the API (custom Lambda authorizer)
 

@@ -123,6 +123,12 @@ jobs:
       - name: Build Lambda layer bundle
         run: python backend/build.py
 
+      - name: Build frontend
+        run: |
+          cd ui
+          npm ci
+          npm run build
+
       - name: CDK synth
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 synth --quiet
@@ -173,6 +179,12 @@ jobs:
       - name: Build Lambda layer bundle
         run: python backend/build.py
 
+      - name: Build frontend
+        run: |
+          cd ui
+          npm ci
+          npm run build
+
       - name: CDK deploy (development)
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
@@ -187,6 +199,19 @@ jobs:
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${API_URL}posts")
           if [[ "$HTTP_CODE" != "401" && "$HTTP_CODE" != "403" ]]; then
             echo "Expected 401/403 from protected route, got $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Smoke test frontend
+        run: |
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name TechBlogFrontendStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+          test -n "$FRONTEND_URL"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "Expected 200 from CloudFront, got $HTTP_CODE"
             exit 1
           fi
 
@@ -239,6 +264,12 @@ jobs:
       - name: Build Lambda layer bundle
         run: python backend/build.py
 
+      - name: Build frontend
+        run: |
+          cd ui
+          npm ci
+          npm run build
+
       - name: CDK deploy
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
@@ -253,5 +284,18 @@ jobs:
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${API_URL}posts")
           if [[ "$HTTP_CODE" != "401" && "$HTTP_CODE" != "403" ]]; then
             echo "Expected 401/403 from protected route, got $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Smoke test frontend
+        run: |
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name TechBlogFrontendStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+          test -n "$FRONTEND_URL"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "Expected 200 from CloudFront, got $HTTP_CODE"
             exit 1
           fi

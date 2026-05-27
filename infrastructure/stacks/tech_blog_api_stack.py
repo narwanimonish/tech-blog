@@ -112,4 +112,6 @@ class TechBlogApiStack(Stack):
         )
         api.add_lambda_resource("auth/login", "POST", lambda_stack.auth_login.function)
 
-        CfnOutput(self, "ApiUrl", value=api.api.url, description="API Gateway URL")
+        self.api_url = api.api.url
+
+        CfnOutput(self, "ApiUrl", value=self.api_url, description="API Gateway URL")

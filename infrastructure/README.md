@@ -1,6 +1,8 @@
 # Tech Blog – CDK Infrastructure
 
-Four stacks: **TechBlogDataStack** (DynamoDB), **TechBlogAuthStack** (Cognito), **TechBlogLambdaStack** (Lambdas + IAM + env), **TechBlogApiStack** (API Gateway + custom Lambda authorizer). See **[DEPLOY.md](DEPLOY.md)** for deploy order and API usage.
+Five stacks: **TechBlogDataStack** (DynamoDB), **TechBlogAuthStack** (Cognito), **TechBlogLambdaStack** (Lambdas + IAM + env), **TechBlogApiStack** (API Gateway + custom Lambda authorizer), **TechBlogFrontendStack** (React UI on S3 + CloudFront). See **[DEPLOY.md](DEPLOY.md)** for deploy order and API usage.
+
+Build the UI before `cdk deploy --all`: from repo root run `make ui-build` (or `cd ui && npm ci && npm run build`).
 
 # Welcome to your CDK Python project!
 
