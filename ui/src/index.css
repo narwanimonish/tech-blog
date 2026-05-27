@@ -139,3 +139,38 @@ button:disabled {
   background: #d9e2ec;
   font-size: 0.8rem;
 }
+
+.list-item-clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+  transition: background 0.15s ease;
+}
+
+.list-item-clickable:hover {
+  background: #f0f4f8;
+}
+
+.list-item-clickable.selected {
+  background: #e4ebf5;
+  outline: 1px solid #bcccdc;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.detail-list dt {
+  margin: 0;
+  font-weight: 600;
+  color: #486581;
+}
+
+.detail-list dd {
+  margin: 0;
+}
