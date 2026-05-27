@@ -114,4 +114,10 @@ class TechBlogApiStack(Stack):
 
         self.api_url = api.api.url
 
-        CfnOutput(self, "ApiUrl", value=self.api_url, description="API Gateway URL")
+        CfnOutput(
+            self,
+            "ApiUrl",
+            value=self.api_url,
+            export_name=f"{app_name}-{config.ENV}-api-url",
+            description="API Gateway URL",
+        )

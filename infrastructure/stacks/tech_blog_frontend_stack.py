@@ -7,6 +7,7 @@ from __future__ import annotations
 from aws_cdk import (
     CfnOutput,
     Duration,
+    Fn,
     RemovalPolicy,
     Stack,
     aws_cloudfront as cloudfront,
@@ -28,11 +29,12 @@ class TechBlogFrontendStack(Stack):
         scope: Construct,
         construct_id: str,
         config: DevConfig | ProdConfig,
-        api_url: str,
+        api_url_export_name: str,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
         app_name = config.APP_NAME
+        api_url = Fn.import_value(api_url_export_name)
 
         website_bucket = s3.Bucket(
             self,
@@ -87,7 +89,7 @@ class TechBlogFrontendStack(Stack):
                 s3deploy.Source.asset("../ui/dist"),
                 s3deploy.Source.json_data(
                     "config.json",
-                    {"apiUrl": api_url.rstrip("/")},
+                    {"apiUrl": api_url},
                 ),
             ],
             destination_bucket=website_bucket,

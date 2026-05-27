@@ -75,12 +75,12 @@ api_stack = TechBlogApiStack(
 )
 api_stack.add_dependency(lambda_stack)
 
-# 5. Static frontend (S3 + CloudFront) – needs API URL for runtime config.json
+# 5. Static frontend (S3 + CloudFront) – imports exported ApiUrl for runtime config.json
 frontend_stack = TechBlogFrontendStack(
     app,
     "TechBlogFrontendStack",
     config=env_config,
-    api_url=api_stack.api_url,
+    api_url_export_name=f"{env_config.APP_NAME}-{env_config.ENV}-api-url",
     env=cdk_env,
 )
 frontend_stack.add_dependency(api_stack)
