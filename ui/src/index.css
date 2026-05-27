@@ -102,6 +102,19 @@ button.danger {
   background: #ba254a;
 }
 
+.button-link {
+  display: inline-block;
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-decoration: none;
+  color: #fff;
+  background: #243b53;
+}
+
+.button-link.secondary {
+  background: #627d98;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -156,6 +169,30 @@ button:disabled {
 .list-item-clickable.selected {
   background: #e4ebf5;
   outline: 1px solid #bcccdc;
+}
+
+.back-link {
+  color: #486581;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.list-link {
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  border-radius: 8px;
+  padding: 4px;
+  margin: -4px;
+}
+
+.list-link:hover {
+  background: #f0f4f8;
 }
 
 .detail-list {

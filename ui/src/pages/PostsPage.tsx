@@ -1,13 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import {
-  ApiClientError,
-  createPost,
-  deletePost,
-  getPost,
-  listPosts,
-  updatePost,
-} from "../api/client";
+import { Link, Navigate } from "react-router-dom";
+import { ApiClientError, createPost, deletePost, listPosts } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Post } from "../types";
 import { formatDate } from "../utils/format";
@@ -15,9 +8,6 @@ import { formatDate } from "../utils/format";
 export function PostsPage() {
   const { token, canManagePosts } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [viewedPost, setViewedPost] = useState<Post | null>(null);
-  const [viewLoading, setViewLoading] = useState(false);
-  const [editPostId, setEditPostId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,38 +30,6 @@ export function PostsPage() {
     return <Navigate to="/login" replace />;
   }
 
-  async function handleViewPost(postId: string) {
-    if (!token) {
-      return;
-    }
-    setViewLoading(true);
-    setError(null);
-    try {
-      setViewedPost(await getPost(token, postId));
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load post");
-      setViewedPost(null);
-    } finally {
-      setViewLoading(false);
-    }
-  }
-
-  async function handleStartEdit(postId: string) {
-    if (!token) {
-      return;
-    }
-    setError(null);
-    try {
-      const post = await getPost(token, postId);
-      setEditPostId(postId);
-      setTitle(post.title);
-      setBody(post.body);
-      setViewedPost(post);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load post for edit");
-    }
-  }
-
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     if (!token) {
@@ -83,33 +41,9 @@ export function PostsPage() {
       await createPost(token, { title: title.trim(), body: body.trim() });
       setTitle("");
       setBody("");
-      setEditPostId(null);
       await loadPosts();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to create post");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleUpdate() {
-    if (!token || !editPostId) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await updatePost(token, editPostId, {
-        title: title.trim(),
-        body: body.trim(),
-      });
-      setViewedPost(updated);
-      setEditPostId(null);
-      setTitle("");
-      setBody("");
-      await loadPosts();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to update post");
     } finally {
       setBusy(false);
     }
@@ -123,14 +57,6 @@ export function PostsPage() {
     setError(null);
     try {
       await deletePost(token, postId);
-      if (editPostId === postId) {
-        setEditPostId(null);
-        setTitle("");
-        setBody("");
-      }
-      if (viewedPost?.postId === postId) {
-        setViewedPost(null);
-      }
       await loadPosts();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to delete post");
@@ -145,96 +71,41 @@ export function PostsPage() {
 
       <div className="card stack">
         <h2 style={{ margin: 0 }}>Posts</h2>
-        <p className="muted">Click a post to load it with GET /posts/{"{postId}"}.</p>
         {posts.length === 0 ? <p className="muted">No posts yet.</p> : null}
         {posts.map((post) => (
-          <div
-            key={post.postId}
-            className={`list-item stack list-item-clickable${
-              viewedPost?.postId === post.postId ? " selected" : ""
-            }`}
-            onClick={() => void handleViewPost(post.postId)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                void handleViewPost(post.postId);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-          >
+          <div key={post.postId} className="list-item stack">
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
+              <Link to={`/posts/${post.postId}`} className="list-link">
                 <strong>{post.title}</strong>
                 <div className="muted">
                   {post.created_by} · {formatDate(post.creation_time)}
                 </div>
-              </div>
-              <div className="row" onClick={(event) => event.stopPropagation()}>
-                {canManagePosts ? (
-                  <>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => void handleStartEdit(post.postId)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="danger"
-                      onClick={() => void handleDelete(post.postId)}
-                    >
-                      Delete
-                    </button>
-                  </>
-                ) : null}
-              </div>
+                <p style={{ margin: "8px 0 0", color: "#1f2933" }}>{post.body}</p>
+              </Link>
+              {canManagePosts ? (
+                <div className="row">
+                  <Link to={`/posts/${post.postId}/edit`} className="button-link secondary">
+                    Edit
+                  </Link>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => void handleDelete(post.postId)}
+                    disabled={busy}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ) : null}
             </div>
-            <p style={{ margin: 0 }}>{post.body}</p>
           </div>
         ))}
       </div>
 
-      {viewLoading ? (
-        <div className="card">
-          <p className="muted">Loading post…</p>
-        </div>
-      ) : null}
-
-      {viewedPost && !viewLoading ? (
-        <div className="card stack">
-          <h3 style={{ margin: 0 }}>Post details</h3>
-          <p className="muted">Loaded via GET /posts/{viewedPost.postId}</p>
-          <dl className="detail-list">
-            <dt>Title</dt>
-            <dd>{viewedPost.title}</dd>
-            <dt>Body</dt>
-            <dd>{viewedPost.body}</dd>
-            <dt>Post ID</dt>
-            <dd>{viewedPost.postId}</dd>
-            <dt>Author</dt>
-            <dd>{viewedPost.created_by}</dd>
-            <dt>Created</dt>
-            <dd>{formatDate(viewedPost.creation_time)}</dd>
-          </dl>
-        </div>
-      ) : null}
-
       {canManagePosts ? (
         <div className="card stack">
-          <h3 style={{ margin: 0 }}>{editPostId ? "Edit post" : "Create post"}</h3>
-          <form
-            className="stack"
-            onSubmit={
-              editPostId
-                ? (event) => {
-                    event.preventDefault();
-                    void handleUpdate();
-                  }
-                : handleCreate
-            }
-          >
+          <h3 style={{ margin: 0 }}>Create post</h3>
+          <form className="stack" onSubmit={handleCreate}>
             <label>
               Title
               <input value={title} onChange={(event) => setTitle(event.target.value)} required />
@@ -243,24 +114,9 @@ export function PostsPage() {
               Body
               <textarea value={body} onChange={(event) => setBody(event.target.value)} required />
             </label>
-            <div className="row">
-              <button type="submit" disabled={busy}>
-                {editPostId ? "Update post" : "Create post"}
-              </button>
-              {editPostId ? (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    setEditPostId(null);
-                    setTitle("");
-                    setBody("");
-                  }}
-                >
-                  Cancel edit
-                </button>
-              ) : null}
-            </div>
+            <button type="submit" disabled={busy}>
+              Create post
+            </button>
           </form>
         </div>
       ) : (
