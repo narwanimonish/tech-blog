@@ -36,7 +36,28 @@ def test_list_users_returns_all_items(mock_table):
     mock_table.scan.assert_called_once()
 
 
+def test_update_user_merges_into_existing_item(mock_table):
+    mock_table.get_item.return_value = {
+        "Item": {
+            "userId": "u1",
+            "email": "old@b.com",
+            "name": "Alice",
+            "role": "reader",
+            "cognitoUsername": "pool-user",
+        }
+    }
+    svc = UsersService(mock_table)
+    result = svc.update_user("u1", {"email": "new@b.com", "name": "Bob"})
+    assert result["email"] == "new@b.com"
+    assert result["name"] == "Bob"
+    assert result["role"] == "reader"
+    assert result["cognitoUsername"] == "pool-user"
+    call_item = mock_table.put_item.call_args[1]["Item"]
+    assert call_item["role"] == "reader"
+
+
 def test_update_user_calls_put_with_user_id(mock_table):
+    mock_table.get_item.return_value = {"Item": {"userId": "u1", "email": "old@b.com", "role": "reader"}}
     svc = UsersService(mock_table)
     result = svc.update_user("u1", {"email": "new@b.com", "name": "Alice"})
     assert result["userId"] == "u1"
@@ -45,9 +66,16 @@ def test_update_user_calls_put_with_user_id(mock_table):
     call_item = mock_table.put_item.call_args[1]["Item"]
     assert call_item["userId"] == "u1"
     assert call_item["email"] == "new@b.com"
+    assert call_item["role"] == "reader"
 
 
-# only updates the attributes which are mentioned while calling update()
+def test_update_user_missing_raises_not_found(mock_table):
+    mock_table.get_item.return_value = {}
+    svc = UsersService(mock_table)
+    with pytest.raises(AppError) as exc:
+        svc.update_user("missing", {"email": "a@b.com"})
+    assert exc.value.code == "NOT_FOUND"
+    mock_table.put_item.assert_not_called()
 
 
 def test_delete_user_calls_get_then_delete_item(mock_table):

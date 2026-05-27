@@ -68,6 +68,17 @@ def _ensure_self_or_admin(event: dict, target_user_id: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _profile_update_payload(data: dict) -> dict:
+    """Allowed profile fields for PUT /users/{userId} (merged into existing DynamoDB item)."""
+    payload = {}
+    if "email" in data and data["email"] is not None:
+        payload["email"] = str(data["email"]).strip()
+    if "name" in data:
+        name = data["name"]
+        payload["name"] = str(name).strip() if name is not None else ""
+    return payload
+
+
 def lambda_handler(event, context):
     request_id = getattr(context, "aws_request_id", "unknown")
     method = (event.get("httpMethod") or "").upper()
@@ -108,6 +119,9 @@ def lambda_handler(event, context):
             return simple_api_util.build_response(200, updated)
 
         if method == "PUT" and user_id:
+            allowed_self, self_msg = _ensure_self_or_admin(event, user_id)
+            if not allowed_self:
+                return simple_api_util.build_error_response("FORBIDDEN", self_msg, 403, request_id=request_id)
             body = event.get("body")
             if not body:
                 return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
@@ -115,8 +129,19 @@ def lambda_handler(event, context):
                 data = json.loads(body)
             except json.JSONDecodeError:
                 return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            data.pop("role", None)
-            return simple_api_util.build_response(200, SERVICE.update_user(user_id, data))
+            profile = _profile_update_payload(data)
+            if not profile:
+                return simple_api_util.build_error_response(
+                    "BAD_REQUEST",
+                    "At least one of email or name is required",
+                    400,
+                    request_id=request_id,
+                )
+            try:
+                updated = SERVICE.update_user(user_id, profile)
+            except AppError as err:
+                return simple_api_util.build_error_response(err.code, err.message, err.status_code, request_id=request_id)
+            return simple_api_util.build_response(200, updated)
 
         if method == "DELETE" and user_id:
             SERVICE.delete_user(user_id)

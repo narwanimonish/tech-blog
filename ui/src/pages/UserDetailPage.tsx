@@ -15,7 +15,7 @@ const ROLES: Role[] = ["admin", "writer", "reader"];
 export function UserDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const { token, isAdmin, currentUser, loading: authLoading } = useAuth();
+  const { token, isAdmin, currentUser, loading: authLoading, refreshCurrentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +23,8 @@ export function UserDetailPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("reader");
   const [busy, setBusy] = useState(false);
+
+  const canEditProfile = isAdmin || currentUser?.userId === userId;
 
   useEffect(() => {
     if (!token || !userId) {
@@ -66,20 +68,23 @@ export function UserDetailPage() {
     try {
       const updated = await updateUser(token, user.userId, {
         email: email.trim(),
-        name: name.trim() || undefined,
+        name: name.trim(),
       });
       setUser(updated);
       setEmail(updated.email);
       setName(updated.name ?? "");
+      if (currentUser?.userId === user.userId) {
+        await refreshCurrentUser();
+      }
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to update user");
+      setError(err instanceof ApiClientError ? err.message : "Failed to update profile");
     } finally {
       setBusy(false);
     }
   }
 
   async function handleRoleChange() {
-    if (!token || !user) {
+    if (!token || !user || !isAdmin) {
       return;
     }
     setBusy(true);
@@ -129,12 +134,12 @@ export function UserDetailPage() {
           <div className="card stack">
             <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <h2 style={{ margin: 0 }}>{isAdmin ? user.email : "My profile"}</h2>
+                <h2 style={{ margin: 0 }}>{isAdmin && user.userId !== currentUser?.userId ? user.email : "My profile"}</h2>
                 <p className="muted" style={{ margin: "8px 0 0" }}>
                   {user.name ?? "No name"} · <span className="badge">{user.role}</span>
                 </p>
               </div>
-              {isAdmin ? (
+              {isAdmin && user.userId !== currentUser?.userId ? (
                 <button type="button" className="danger" onClick={() => void handleDelete()} disabled={busy}>
                   Delete
                 </button>
@@ -154,9 +159,10 @@ export function UserDetailPage() {
             </dl>
           </div>
 
-          {isAdmin ? (
+          {canEditProfile ? (
             <div className="card stack">
-              <h3 style={{ margin: 0 }}>Manage user</h3>
+              <h3 style={{ margin: 0 }}>Edit profile</h3>
+              <p className="muted">Updates are saved to DynamoDB (role is unchanged).</p>
               <form className="stack" onSubmit={handleUpdate}>
                 <label>
                   Email
@@ -167,28 +173,30 @@ export function UserDetailPage() {
                   <input value={name} onChange={(event) => setName(event.target.value)} />
                 </label>
                 <button type="submit" disabled={busy}>
-                  Update profile
+                  Save profile
                 </button>
               </form>
-              <div className="stack">
-                <label>
-                  Role
-                  <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
-                    {ROLES.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button type="button" onClick={() => void handleRoleChange()} disabled={busy}>
-                  Change role
-                </button>
-              </div>
             </div>
-          ) : (
-            <p className="muted">Only admins can edit or delete users.</p>
-          )}
+          ) : null}
+
+          {isAdmin && user.userId !== currentUser?.userId ? (
+            <div className="card stack">
+              <h3 style={{ margin: 0 }}>Change role</h3>
+              <label>
+                Role
+                <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
+                  {ROLES.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={() => void handleRoleChange()} disabled={busy}>
+                Change role
+              </button>
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

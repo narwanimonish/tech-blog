@@ -15,8 +15,8 @@
     {
       "path": "/users/{userId}",
       "method": "PUT",
-      "description": "Update user",
-      "permissions": ["users.manage"]
+      "description": "Update user profile (own profile, or any user for admin)",
+      "permissions": ["users.view"]
     },
     {
       "path": "/users/{userId}",

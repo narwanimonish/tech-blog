@@ -37,11 +37,14 @@ class UsersService:
         return dynamodb_util.get_item(self._table, {"userId": user_id})
 
     def update_user(self, user_id, data):
-        """Create or update a user. data must be a dict; userId is set to user_id."""
-        data["userId"] = user_id
-        dynamodb_util.put_item(self._table, data)
+        """Merge profile fields into the existing user item (preserves role, cognitoUsername, etc.)."""
+        existing = dynamodb_util.get_item(self._table, {"userId": user_id})
+        if not existing:
+            raise AppError("NOT_FOUND", "User not found", 404)
+        merged = {**existing, **data, "userId": user_id}
+        dynamodb_util.put_item(self._table, merged)
         LOGGER.info("Put user %s", user_id)
-        return data
+        return merged
 
     def update_user_role(self, user_id, role: str):
         """Set user's role to admin, writer, or reader. Raises AppError if user missing or role invalid."""
