@@ -66,7 +66,8 @@ class TechBlogFrontendStack(Stack):
                     origin_access_identity=origin_access_identity,
                 ),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                cached_methods=cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+                allowed_methods=cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+                cached_methods=cloudfront.CachedMethods.CACHE_GET_HEAD,
             ),
             default_root_object="index.html",
             error_responses=[
