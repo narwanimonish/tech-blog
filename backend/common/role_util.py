@@ -21,6 +21,11 @@ _LEVEL_ORDER = ("view", "manage", "fullaccess")
 
 _RBAC_DIR = Path(__file__).resolve().parent / "rbac_config"
 
+_APIS_CONFIG: list | None = None
+_ROLES_CONFIG: tuple[dict, str] | None = None
+_SERVICES_CONFIG: dict | None = None
+_TABLE_CACHE: dict[str, object] = {}
+
 
 def _load_json(name: str) -> dict:
     path = _RBAC_DIR / name
@@ -36,19 +41,35 @@ def _load_json(name: str) -> dict:
 
 
 def _get_api_permissions_config() -> list:
-    data = _load_json("consolidated_api_permissions.json")
-    return data.get("apis", [])
+    global _APIS_CONFIG
+    if _APIS_CONFIG is None:
+        _APIS_CONFIG = _load_json("consolidated_api_permissions.json").get("apis", [])
+    return _APIS_CONFIG
 
 
 def _get_role_permissions_config() -> tuple:
-    data = _load_json("role_permissions.json")
-    return data.get("roles", {}), data.get("default_role", "reader")
+    global _ROLES_CONFIG
+    if _ROLES_CONFIG is None:
+        data = _load_json("role_permissions.json")
+        _ROLES_CONFIG = (data.get("roles", {}), data.get("default_role", "reader"))
+    return _ROLES_CONFIG
 
 
 def _get_service_level_config() -> dict:
     """Load service_level_permissions.json (services and their levels with dependencies)."""
-    data = _load_json("service_level_permissions.json")
-    return data.get("services", {})
+    global _SERVICES_CONFIG
+    if _SERVICES_CONFIG is None:
+        data = _load_json("service_level_permissions.json")
+        _SERVICES_CONFIG = data.get("services", {})
+    return _SERVICES_CONFIG
+
+
+def _users_table(users_table_name: str):
+    table = _TABLE_CACHE.get(users_table_name)
+    if table is None:
+        table = boto3.resource("dynamodb").Table(users_table_name)
+        _TABLE_CACHE[users_table_name] = table
+    return table
 
 
 def _get_dependencies_for_level(services_config: dict, service: str, level: str) -> list[str]:
@@ -241,8 +262,11 @@ def get_user_role(user_id: str, users_table_name: str) -> str:
     if not users_table_name or not user_id:
         return _get_role_permissions_config()[1]
     try:
-        table = boto3.resource("dynamodb").Table(users_table_name)
-        resp = table.get_item(Key={"userId": user_id})
+        resp = _users_table(users_table_name).get_item(
+            Key={"userId": user_id},
+            ProjectionExpression="#role",
+            ExpressionAttributeNames={"#role": "role"},
+        )
         item = resp.get("Item") or {}
         role = (item.get("role") or "").strip().lower()
         roles, default = _get_role_permissions_config()

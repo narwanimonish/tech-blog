@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiClientError, deletePost, getPost } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Post } from "../types";
 import { formatDate } from "../utils/format";
 
+type PostDetailLocationState = {
+  post?: Post;
+};
+
 export function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { token, canManagePosts } = useAuth();
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
+  const statePost = (location.state as PostDetailLocationState | null)?.post;
+  const initialPost = statePost?.postId === postId ? statePost : null;
+  const [post, setPost] = useState<Post | null>(initialPost);
+  const [loading, setLoading] = useState(!initialPost);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -18,6 +25,10 @@ export function PostDetailPage() {
     if (!token || !postId) {
       return;
     }
+    if (initialPost) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
     getPost(token, postId)
@@ -27,7 +38,7 @@ export function PostDetailPage() {
         setError(err instanceof ApiClientError ? err.message : "Failed to load post");
       })
       .finally(() => setLoading(false));
-  }, [token, postId]);
+  }, [token, postId, initialPost]);
 
   if (!token) {
     return <Navigate to="/login" replace />;

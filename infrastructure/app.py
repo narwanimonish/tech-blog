@@ -72,10 +72,12 @@ api_stack = TechBlogApiStack(
     config=env_config,
     lambda_stack=lambda_stack,
     data_stack=data_stack,
+    auth_stack=auth_stack,
     env=cdk_env,
 )
 api_stack.add_dependency(lambda_stack)
 api_stack.add_dependency(data_stack)
+api_stack.add_dependency(auth_stack)
 
 # 5. Static frontend (S3 + CloudFront) — upload assets via scripts/deploy-frontend.sh after deploy
 frontend_stack = TechBlogFrontendStack(

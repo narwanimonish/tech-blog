@@ -14,6 +14,8 @@ Lambda asset contains only the handler (runtime/).
 """
 
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parent
@@ -22,6 +24,28 @@ CORE = BACKEND_ROOT / "core"
 WEBSERVICE = BACKEND_ROOT / "webservice"
 LAYER_BUNDLE = BACKEND_ROOT / "layer_bundle"
 PYTHON = LAYER_BUNDLE / "python"
+LAYER_REQUIREMENTS = BACKEND_ROOT / "layer_requirements.txt"
+
+
+def _install_layer_dependencies():
+    if not LAYER_REQUIREMENTS.is_file():
+        return
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            str(LAYER_REQUIREMENTS),
+            "-t",
+            str(PYTHON),
+            "--upgrade",
+            "--no-cache-dir",
+        ],
+        check=True,
+    )
+    print(f"Installed layer deps from {LAYER_REQUIREMENTS.name}")
 
 
 def main():
@@ -32,6 +56,7 @@ def main():
     if LAYER_BUNDLE.exists():
         shutil.rmtree(LAYER_BUNDLE)
     PYTHON.mkdir(parents=True)
+    _install_layer_dependencies()
     shutil.copytree(COMMON, PYTHON / "common", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     shutil.copytree(CORE, PYTHON / "core", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     print("Built layer_bundle/python/{common,core}")

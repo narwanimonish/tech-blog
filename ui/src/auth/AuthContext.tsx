@@ -12,6 +12,41 @@ import type { Role, User } from "../types";
 
 const TOKEN_KEY = "tech_blog_access_token";
 const EMAIL_KEY = "tech_blog_email";
+const USER_CACHE_KEY = "tech_blog_current_user";
+const USER_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CachedUser {
+  user: User;
+  cachedAt: number;
+}
+
+function readCachedUser(sub: string): User | null {
+  try {
+    const raw = sessionStorage.getItem(USER_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as CachedUser;
+    if (
+      parsed.user?.userId !== sub ||
+      Date.now() - parsed.cachedAt > USER_CACHE_TTL_MS
+    ) {
+      return null;
+    }
+    return parsed.user;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(user: User): void {
+  const payload: CachedUser = { user, cachedAt: Date.now() };
+  sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(payload));
+}
+
+function clearCachedUser(): void {
+  sessionStorage.removeItem(USER_CACHE_KEY);
+}
 
 interface AuthContextValue {
   token: string | null;
@@ -49,7 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentUser(null);
       return;
     }
-    setCurrentUser(await getUser(token, sub));
+    const cached = readCachedUser(sub);
+    if (cached) {
+      setCurrentUser(cached);
+      return;
+    }
+
+    const user = await getUser(token, sub);
+    writeCachedUser(user);
+    setCurrentUser(user);
   }, [token]);
 
   useEffect(() => {
@@ -76,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(EMAIL_KEY);
+    clearCachedUser();
     setToken(null);
     setEmail(null);
     setCurrentUser(null);

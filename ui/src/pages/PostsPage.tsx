@@ -75,7 +75,7 @@ export function PostsPage() {
         {posts.map((post) => (
           <div key={post.postId} className="list-item stack">
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <Link to={`/posts/${post.postId}`} className="list-link">
+              <Link to={`/posts/${post.postId}`} state={{ post }} className="list-link">
                 <strong>{post.title}</strong>
                 <div className="muted">
                   {post.created_by} · {formatDate(post.creation_time)}

@@ -16,6 +16,7 @@ from lambda_config import get_lambda_settings
 from services.lambda_function import LambdaFunction
 from services.lambda_warmer import LambdaWarmer
 from services.rest_api_gateway import RestApiGateway
+from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
@@ -30,6 +31,7 @@ class TechBlogApiStack(Stack):
         config: DevConfig | ProdConfig,
         lambda_stack: TechBlogLambdaStack,
         data_stack: TechBlogDataStack,
+        auth_stack: TechBlogAuthStack,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
@@ -50,15 +52,10 @@ class TechBlogApiStack(Stack):
             reserved_concurrent_executions=auth_cfg["reserved_concurrent_executions"],
             environment={
                 "USER_POOL_REGION": self.region,
+                "USER_POOL_ID": auth_stack.user_pool.user_pool_id,
+                "USER_POOL_CLIENT_ID": auth_stack.user_pool_client.user_pool_client_id,
                 "usersStoreTable": users_table.table.table_name,
             },
-        )
-        authorizer_lambda.function.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["cognito-idp:GetUser"],
-                resources=["*"],
-            )
         )
         users_table.table.grant_read_data(authorizer_lambda.function)
 
@@ -75,7 +72,7 @@ class TechBlogApiStack(Stack):
             handler=authorizer_lambda.function,
             identity_sources=[apigw.IdentitySource.header("Authorization")],
             authorizer_name=f"{app_name}-custom-auth",
-            results_cache_ttl=Duration.minutes(5),
+            results_cache_ttl=Duration.minutes(15),
         )
 
         authorizer_lambda.function.add_permission(
