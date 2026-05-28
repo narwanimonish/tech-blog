@@ -77,10 +77,11 @@ ensure_no_shared_layer_imports() {
     if [[ "$attempt" -gt 3 ]]; then
       echo "ERROR: stacks still import ${export_name} after 3 exclusive Api deploy attempts."
       print_shared_layer_export_status
+      echo "Run manually: bash scripts/drop-shared-layer-import.sh"
       exit 1
     fi
-    echo "=== TechBlogApiStack (attempt ${attempt}: drop SharedLayer import, --exclusively) ==="
-    "${CDK_STACK[@]}" TechBlogApiStack
+    echo "=== TechBlogApiStack (attempt ${attempt}: drop SharedLayer import, --exclusively --force) ==="
+    "${CDK_STACK[@]}" TechBlogApiStack --force
     wait_for_stack TechBlogApiStack
     export_name=$(lambda_shared_layer_export_name)
     attempt=$((attempt + 1))

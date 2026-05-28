@@ -39,11 +39,13 @@ class TechBlogApiStack(Stack):
         auth_cfg = get_lambda_settings("authorizer")
         users_table = data_stack.users_table
 
-        # Own layer copy in this stack (same asset as Lambda stack) — avoids CloudFormation
+        # Own layer in this stack (same asset as Lambda stack) — avoids CloudFormation
         # export lock when TechBlogLambdaStack publishes a new LayerVersion.
+        # Construct id AuthorizerLayer (not SharedLayer) so migration clearly replaces
+        # the old Fn::ImportValue from TechBlogLambdaStack.
         authorizer_layer = SharedLayer(
             self,
-            "SharedLayer",
+            "AuthorizerLayer",
             asset_path="../backend/layer_bundle",
         ).get_layer()
 

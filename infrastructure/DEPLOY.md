@@ -103,14 +103,22 @@ The **live** API stack still imports a CloudFormation export from the Lambda sta
 
 **Fix (code is already in place):** the authorizer layer is built inside `TechBlogApiStack`, not imported from `TechBlogLambdaStack`.
 
-**Deploy order (also enforced by `scripts/cdk-deploy-ordered.sh`):**
+**Unblock (run this first if Lambda fails with the export error):**
+
+```bash
+bash scripts/drop-shared-layer-import.sh
+```
+
+That deploys **only** `TechBlogApiStack` (`--exclusively --force`), waits for completion, and verifies `list-imports` is empty before you touch Lambda.
+
+**Full deploy order (also enforced by `scripts/cdk-deploy-ordered.sh`):**
 
 ```bash
 python backend/build.py
 cd infrastructure
 # --exclusively is required: otherwise CDK deploys TechBlogLambdaStack first (dependency)
 # and hits the SharedLayer export lock before Api can drop the import.
-npx cdk deploy TechBlogApiStack --require-approval never --exclusively
+npx cdk deploy TechBlogApiStack --require-approval never --exclusively --force
 npx cdk deploy TechBlogLambdaStack --require-approval never --exclusively
 npx cdk deploy TechBlogWarmerStack TechBlogFrontendStack --require-approval never --exclusively
 npx cdk deploy TechBlogApiStack --require-approval never --exclusively
