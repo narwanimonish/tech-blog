@@ -11,6 +11,9 @@ Lambda Layer mounts this at /opt, so "from common import ..." and
 
 Also removes any existing common/ and core/ from webservice/* so each
 Lambda asset contains only the handler (runtime/).
+
+Authorizer-only pip deps (PyJWT) are installed into webservice/authorizer/
+using manylinux2014_x86_64 wheels for AWS Lambda Python 3.12.
 """
 
 import shutil
@@ -22,14 +25,30 @@ BACKEND_ROOT = Path(__file__).resolve().parent
 COMMON = BACKEND_ROOT / "common"
 CORE = BACKEND_ROOT / "core"
 WEBSERVICE = BACKEND_ROOT / "webservice"
+AUTHORIZER = WEBSERVICE / "authorizer"
 LAYER_BUNDLE = BACKEND_ROOT / "layer_bundle"
 PYTHON = LAYER_BUNDLE / "python"
-LAYER_REQUIREMENTS = BACKEND_ROOT / "layer_requirements.txt"
+LAMBDA_PYTHON_VERSION = "3.12"
+LAMBDA_PLATFORM = "manylinux2014_x86_64"
 
 
-def _install_layer_dependencies():
-    if not LAYER_REQUIREMENTS.is_file():
+def _clean_authorizer_vendor(authorizer_dir: Path) -> None:
+    keep = {"runtime", "requirements.txt"}
+    for item in authorizer_dir.iterdir():
+        if item.name in keep:
+            continue
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+
+
+def _install_authorizer_dependencies() -> None:
+    requirements = AUTHORIZER / "requirements.txt"
+    if not requirements.is_file():
         return
+
+    _clean_authorizer_vendor(AUTHORIZER)
     subprocess.run(
         [
             sys.executable,
@@ -37,31 +56,38 @@ def _install_layer_dependencies():
             "pip",
             "install",
             "-r",
-            str(LAYER_REQUIREMENTS),
+            str(requirements),
             "-t",
-            str(PYTHON),
+            str(AUTHORIZER),
             "--upgrade",
             "--no-cache-dir",
+            "--platform",
+            LAMBDA_PLATFORM,
+            "--python-version",
+            LAMBDA_PYTHON_VERSION,
+            "--implementation",
+            "cp",
+            "--only-binary",
+            ":all:",
         ],
         check=True,
     )
-    print(f"Installed layer deps from {LAYER_REQUIREMENTS.name}")
+    print(f"Installed authorizer deps for Lambda ({LAMBDA_PLATFORM}, cp{LAMBDA_PYTHON_VERSION})")
 
 
 def main():
     if not COMMON.is_dir() or not CORE.is_dir():
         raise SystemExit("backend/common and backend/core must exist")
 
-    # Build layer: layer_bundle/python/common, layer_bundle/python/core
     if LAYER_BUNDLE.exists():
         shutil.rmtree(LAYER_BUNDLE)
     PYTHON.mkdir(parents=True)
-    _install_layer_dependencies()
     shutil.copytree(COMMON, PYTHON / "common", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     shutil.copytree(CORE, PYTHON / "core", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     print("Built layer_bundle/python/{common,core}")
 
-    # Remove copied common/core from each webservice folder (they use the layer now)
+    _install_authorizer_dependencies()
+
     if WEBSERVICE.is_dir():
         for entry in WEBSERVICE.iterdir():
             if not entry.is_dir() or entry.name.startswith("_"):

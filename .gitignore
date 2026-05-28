@@ -13,3 +13,8 @@
 
 # Backend build output (Lambda Layer bundle)
 backend/layer_bundle/
+
+# Authorizer vendored deps (installed by backend/build.py for Lambda Linux)
+backend/webservice/authorizer/*
+!backend/webservice/authorizer/runtime/
+!backend/webservice/authorizer/requirements.txt
