@@ -185,6 +185,14 @@ jobs:
       - name: Print stack events on failure
         if: failure()
         run: |
+          echo "=== SharedLayer export / import status ==="
+          EXPORT=$(aws cloudformation list-exports \
+            --query "Exports[?starts_with(Name, 'TechBlogLambdaStack:') && contains(Name, 'SharedLayer')].Name | [0]" \
+            --output text 2>/dev/null || echo "None")
+          echo "Export: ${EXPORT}"
+          if [[ -n "${EXPORT}" && "${EXPORT}" != "None" ]]; then
+            aws cloudformation list-imports --export-name "${EXPORT}" --output table || true
+          fi
           for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
             echo "=== Recent events for $stack ==="
             aws cloudformation describe-stack-events \
@@ -283,6 +291,14 @@ jobs:
       - name: Print stack events on failure
         if: failure()
         run: |
+          echo "=== SharedLayer export / import status ==="
+          EXPORT=$(aws cloudformation list-exports \
+            --query "Exports[?starts_with(Name, 'TechBlogLambdaStack:') && contains(Name, 'SharedLayer')].Name | [0]" \
+            --output text 2>/dev/null || echo "None")
+          echo "Export: ${EXPORT}"
+          if [[ -n "${EXPORT}" && "${EXPORT}" != "None" ]]; then
+            aws cloudformation list-imports --export-name "${EXPORT}" --output table || true
+          fi
           for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
             echo "=== Recent events for $stack ==="
             aws cloudformation describe-stack-events \

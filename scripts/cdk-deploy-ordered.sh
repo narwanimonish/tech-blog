@@ -13,10 +13,75 @@ cd "${ROOT}/infrastructure"
 
 CDK=(npx --yes aws-cdk@2.114.1 deploy --require-approval never)
 
-api_imports_lambda_shared_layer() {
-  aws cloudformation get-template --stack-name TechBlogApiStack \
-    --query 'TemplateBody' --output text 2>/dev/null \
-    | grep -q "ExportsOutputRefSharedLayer"
+lambda_shared_layer_export_name() {
+  aws cloudformation list-exports \
+    --query "Exports[?starts_with(Name, 'TechBlogLambdaStack:') && contains(Name, 'SharedLayer')].Name | [0]" \
+    --output text 2>/dev/null || echo "None"
+}
+
+stacks_importing_shared_layer_export() {
+  local export_name="$1"
+  if [[ -z "$export_name" || "$export_name" == "None" ]]; then
+    return 1
+  fi
+  local imports
+  imports=$(aws cloudformation list-imports --export-name "$export_name" --query 'Imports' --output text 2>/dev/null || true)
+  [[ -n "$imports" && "$imports" != "None" ]]
+}
+
+print_shared_layer_export_status() {
+  local export_name imports
+  export_name=$(lambda_shared_layer_export_name)
+  echo "SharedLayer export: ${export_name}"
+  if [[ -z "$export_name" || "$export_name" == "None" ]]; then
+    echo "  (none — safe to deploy TechBlogLambdaStack)"
+    return
+  fi
+  imports=$(aws cloudformation list-imports --export-name "$export_name" --query 'Imports' --output text 2>/dev/null || echo "")
+  if [[ -z "$imports" || "$imports" == "None" ]]; then
+    echo "  Importers: none — safe to deploy TechBlogLambdaStack"
+  else
+    echo "  Importers: ${imports}"
+  fi
+}
+
+wait_for_stack() {
+  local stack_name="$1"
+  local status
+  status=$(aws cloudformation describe-stacks --stack-name "$stack_name" \
+    --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "MISSING")
+  case "$status" in
+    UPDATE_IN_PROGRESS)
+      aws cloudformation wait stack-update-complete --stack-name "$stack_name"
+      ;;
+    CREATE_IN_PROGRESS)
+      aws cloudformation wait stack-create-complete --stack-name "$stack_name"
+      ;;
+  esac
+}
+
+ensure_no_shared_layer_imports() {
+  local export_name attempt=1
+  export_name=$(lambda_shared_layer_export_name)
+  if ! stacks_importing_shared_layer_export "$export_name"; then
+    echo "OK: no stack imports Lambda SharedLayer export."
+    return 0
+  fi
+
+  while stacks_importing_shared_layer_export "$export_name"; do
+    if [[ "$attempt" -gt 3 ]]; then
+      echo "ERROR: stacks still import ${export_name} after 3 Api deploy attempts."
+      print_shared_layer_export_status
+      exit 1
+    fi
+    echo "=== TechBlogApiStack (attempt ${attempt}: drop SharedLayer import) ==="
+    "${CDK[@]}" TechBlogApiStack
+    wait_for_stack TechBlogApiStack
+    export_name=$(lambda_shared_layer_export_name)
+    attempt=$((attempt + 1))
+  done
+
+  echo "OK: SharedLayer export has no importers."
 }
 
 echo "=== TechBlogDataStack, TechBlogAuthStack ==="
@@ -30,26 +95,15 @@ if ! aws cloudformation describe-stacks --stack-name TechBlogLambdaStack >/dev/n
   exit 0
 fi
 
-if api_imports_lambda_shared_layer; then
-  echo "=== TechBlogApiStack (drop cross-stack SharedLayer import) ==="
-  "${CDK[@]}" TechBlogApiStack
-
-  if api_imports_lambda_shared_layer; then
-    echo "ERROR: TechBlogApiStack still imports TechBlogLambdaStack SharedLayer export."
-    echo "Ensure authorizer uses a local SharedLayer (not lambda_stack.shared_layer), then redeploy Api."
-    exit 1
-  fi
-  echo "OK: Api stack no longer imports Lambda SharedLayer export."
-else
-  echo "=== TechBlogApiStack (routine update) ==="
-  "${CDK[@]}" TechBlogApiStack
-fi
+print_shared_layer_export_status
+ensure_no_shared_layer_imports
 
 echo "=== TechBlogLambdaStack (layer + API handlers) ==="
 "${CDK[@]}" TechBlogLambdaStack
+wait_for_stack TechBlogLambdaStack
 
 echo "=== TechBlogWarmerStack, TechBlogFrontendStack ==="
 "${CDK[@]}" TechBlogWarmerStack TechBlogFrontendStack
 
-echo "=== TechBlogApiStack (pick up any Lambda-side changes) ==="
+echo "=== TechBlogApiStack (final sync) ==="
 "${CDK[@]}" TechBlogApiStack
