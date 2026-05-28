@@ -10,6 +10,7 @@ from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
 from stacks.tech_blog_frontend_stack import TechBlogFrontendStack
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
+from stacks.tech_blog_warmer_stack import TechBlogWarmerStack
 
 app = cdk.App()
 
@@ -87,6 +88,18 @@ frontend_stack = TechBlogFrontendStack(
     env=cdk_env,
 )
 frontend_stack.add_dependency(api_stack)
+
+# 6. Optional warm schedules — isolated so failures do not roll back Lambda/API stacks
+warmer_stack = TechBlogWarmerStack(
+    app,
+    "TechBlogWarmerStack",
+    config=env_config,
+    lambda_stack=lambda_stack,
+    api_stack=api_stack,
+    env=cdk_env,
+)
+warmer_stack.add_dependency(lambda_stack)
+warmer_stack.add_dependency(api_stack)
 
 
 app.synth()

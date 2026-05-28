@@ -14,7 +14,6 @@ from config.prod import ProdConfig
 from constructs import Construct
 from lambda_config import get_lambda_settings
 from services.lambda_function import LambdaFunction
-from services.lambda_warmer import LambdaWarmer
 from services.rest_api_gateway import RestApiGateway
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -58,6 +57,7 @@ class TechBlogApiStack(Stack):
             },
         )
         users_table.table.grant_read_data(authorizer_lambda.function)
+        self.authorizer = authorizer_lambda
 
         api = RestApiGateway(
             self,
@@ -79,13 +79,6 @@ class TechBlogApiStack(Stack):
             "AllowApiGwInvoke",
             principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
             source_arn=api.api.arn_for_execute_api("*"),
-        )
-
-        LambdaWarmer(
-            self,
-            "AuthorizerWarmer",
-            functions=[authorizer_lambda.function],
-            interval_minutes=5,
         )
 
         # All users routes → single users Lambda

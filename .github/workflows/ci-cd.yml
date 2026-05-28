@@ -186,7 +186,7 @@ jobs:
       - name: Print stack events on failure
         if: failure()
         run: |
-          for stack in TechBlogLambdaStack TechBlogApiStack; do
+          for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
             echo "=== Recent events for $stack ==="
             aws cloudformation describe-stack-events \
               --stack-name "$stack" \
@@ -285,7 +285,7 @@ jobs:
       - name: Print stack events on failure
         if: failure()
         run: |
-          for stack in TechBlogLambdaStack TechBlogApiStack; do
+          for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
             echo "=== Recent events for $stack ==="
             aws cloudformation describe-stack-events \
               --stack-name "$stack" \

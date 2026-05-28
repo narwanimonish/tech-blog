@@ -1,14 +1,13 @@
-"""EventBridge schedule: one rule per Lambda (direct invoke, no dispatcher)."""
+"""EventBridge warm schedules using L1 constructs and short Lambda permission IDs."""
 
 from __future__ import annotations
 
-from aws_cdk import Duration, aws_events as events, aws_events_targets as targets
-from aws_cdk import aws_lambda as _lambda
+from aws_cdk import aws_events as events, aws_lambda as _lambda, Stack
 from constructs import Construct
 
 
 class LambdaWarmer(Construct):
-    """Separate schedule rule per function (reliable CloudFormation updates)."""
+    """One EventBridge rule per function; permission statement IDs stay under AWS limits."""
 
     def __init__(
         self,
@@ -19,16 +18,29 @@ class LambdaWarmer(Construct):
         **kwargs,
     ):
         super().__init__(scope, id, **kwargs)
-        schedule = events.Schedule.rate(Duration.minutes(interval_minutes))
+        stack_name = Stack.of(scope).stack_name
 
         for index, function in enumerate(functions):
-            rule = events.Rule(
-                self,
+            rule = events.CfnRule(
+                scope,
                 f"WarmRule{index}",
-                schedule=schedule,
-                description=(
-                    f"Keep Lambda warm every {interval_minutes} minutes "
-                    f"({function.function_name})"
-                ),
+                name=f"{stack_name}-warm-{index}"[:64],
+                schedule_expression=f"rate({interval_minutes} minutes)",
+                state="ENABLED",
+                description=f"Keep Lambda warm every {interval_minutes} minutes",
+                targets=[
+                    events.CfnRule.TargetProperty(
+                        arn=function.function_arn,
+                        id=f"T{index}",
+                    )
+                ],
             )
-            rule.add_target(targets.LambdaFunction(function))
+
+            _lambda.CfnPermission(
+                scope,
+                f"WarmPerm{index}",
+                action="lambda:InvokeFunction",
+                function_name=function.function_name,
+                principal="events.amazonaws.com",
+                source_arn=rule.attr_arn,
+            )
