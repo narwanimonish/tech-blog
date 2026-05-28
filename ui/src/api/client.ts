@@ -7,6 +7,9 @@ import type {
   User,
 } from "./types";
 
+export const API_UNAVAILABLE_MESSAGE =
+  "API unavailable — the backend may be down or a deployment is in progress. Try again shortly or check your CDK/CloudFormation deploy status.";
+
 export class ApiClientError extends Error {
   status: number;
   errorCode?: string;
@@ -18,7 +21,43 @@ export class ApiClientError extends Error {
   }
 }
 
+/** Thrown when fetch fails (network error, CORS block, connection reset). */
+export class ApiNetworkError extends Error {
+  readonly isNetworkError = true;
+
+  constructor(message = "Network request failed") {
+    super(message);
+  }
+}
+
+export function isApiUnavailableError(err: unknown): boolean {
+  if (err instanceof ApiNetworkError) {
+    return true;
+  }
+  if (err instanceof TypeError) {
+    return true;
+  }
+  if (err instanceof ApiClientError) {
+    return err.status === 0 || err.status === 502 || err.status === 503 || err.status === 504;
+  }
+  return false;
+}
+
+export function formatApiError(err: unknown, fallback: string): string {
+  if (isApiUnavailableError(err)) {
+    return API_UNAVAILABLE_MESSAGE;
+  }
+  if (err instanceof ApiClientError) {
+    return err.message || fallback;
+  }
+  return fallback;
+}
+
 async function parseError(response: Response): Promise<ApiClientError> {
+  if (response.status === 502 || response.status === 503 || response.status === 504) {
+    return new ApiClientError(API_UNAVAILABLE_MESSAGE, response.status);
+  }
+
   try {
     const body = (await response.json()) as ApiError;
     return new ApiClientError(
@@ -43,10 +82,15 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    throw new ApiNetworkError(err instanceof Error ? err.message : "Network request failed");
+  }
 
   if (!response.ok) {
     throw await parseError(response);
@@ -56,7 +100,11 @@ async function request<T>(
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiClientError(API_UNAVAILABLE_MESSAGE, response.status || 502);
+  }
 }
 
 export async function login(username: string, password: string): Promise<LoginResponse> {

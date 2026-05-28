@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { ApiClientError, getPost, updatePost } from "../api/client";
+import { formatApiError, getPost, updatePost } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export function PostEditPage() {
@@ -23,7 +23,7 @@ export function PostEditPage() {
         setBody(post.body);
       })
       .catch((err: unknown) => {
-        setError(err instanceof ApiClientError ? err.message : "Failed to load post");
+        setError(formatApiError(err, "Failed to load post"));
       })
       .finally(() => setLoading(false));
   }, [token, postId]);
@@ -51,7 +51,7 @@ export function PostEditPage() {
       await updatePost(token, postId, { title: title.trim(), body: body.trim() });
       navigate(`/posts/${postId}`);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to update post");
+      setError(formatApiError(err, "Failed to update post"));
     } finally {
       setBusy(false);
     }

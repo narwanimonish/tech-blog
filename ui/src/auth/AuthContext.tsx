@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { decodeJwtPayload, getUser, login as apiLogin } from "../api/client";
+import { decodeJwtPayload, formatApiError, getUser, login as apiLogin } from "../api/client";
 import type { Role, User } from "../types";
 
 const TOKEN_KEY = "tech_blog_access_token";
@@ -52,6 +52,7 @@ interface AuthContextValue {
   token: string | null;
   email: string | null;
   currentUser: User | null;
+  profileError: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -70,11 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [email, setEmail] = useState<string | null>(() => localStorage.getItem(EMAIL_KEY));
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem(TOKEN_KEY)));
 
   const refreshCurrentUser = useCallback(async () => {
     if (!token) {
       setCurrentUser(null);
+      setProfileError(null);
       return;
     }
 
@@ -82,30 +85,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sub = typeof payload.sub === "string" ? payload.sub : null;
     if (!sub) {
       setCurrentUser(null);
+      setProfileError("Signed in, but the session token is missing a user id.");
       return;
     }
     const cached = readCachedUser(sub);
     if (cached) {
       setCurrentUser(cached);
+      setProfileError(null);
       return;
     }
 
-    const user = await getUser(token, sub);
-    writeCachedUser(user);
-    setCurrentUser(user);
+    try {
+      const user = await getUser(token, sub);
+      writeCachedUser(user);
+      setCurrentUser(user);
+      setProfileError(null);
+    } catch (err) {
+      setCurrentUser(null);
+      setProfileError(formatApiError(err, "Failed to load profile"));
+    }
   }, [token]);
 
   useEffect(() => {
     if (!token) {
       setCurrentUser(null);
+      setProfileError(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    refreshCurrentUser()
-      .catch(() => setCurrentUser(null))
-      .finally(() => setLoading(false));
+    refreshCurrentUser().finally(() => setLoading(false));
   }, [token, refreshCurrentUser]);
 
   const login = useCallback(async (username: string, password: string) => {
@@ -123,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setEmail(null);
     setCurrentUser(null);
+    setProfileError(null);
   }, []);
 
   const value = useMemo(
@@ -130,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       email,
       currentUser,
+      profileError,
       loading,
       login,
       logout,
@@ -137,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: currentUser?.role === "admin",
       canManagePosts: canManagePostsForRole(currentUser?.role),
     }),
-    [token, email, currentUser, loading, login, logout, refreshCurrentUser],
+    [token, email, currentUser, profileError, loading, login, logout, refreshCurrentUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

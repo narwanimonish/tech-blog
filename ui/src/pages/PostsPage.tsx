@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ApiClientError, createPost, deletePost, listPosts } from "../api/client";
+import { formatApiError, createPost, deletePost, listPosts } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Post } from "../types";
 import { formatDate } from "../utils/format";
@@ -22,7 +22,7 @@ export function PostsPage() {
 
   useEffect(() => {
     loadPosts().catch((err: unknown) => {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load posts");
+      setError(formatApiError(err, "Failed to load posts"));
     });
   }, [token]);
 
@@ -43,7 +43,7 @@ export function PostsPage() {
       setBody("");
       await loadPosts();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to create post");
+      setError(formatApiError(err, "Failed to create post"));
     } finally {
       setBusy(false);
     }
@@ -59,7 +59,7 @@ export function PostsPage() {
       await deletePost(token, postId);
       await loadPosts();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to delete post");
+      setError(formatApiError(err, "Failed to delete post"));
     } finally {
       setBusy(false);
     }

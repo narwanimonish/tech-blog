@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { ApiClientError } from "../api/client";
+import { formatApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export function LoginPage() {
@@ -21,9 +21,7 @@ export function LoginPage() {
     try {
       await login(username.trim(), password);
     } catch (err) {
-      const message =
-        err instanceof ApiClientError ? err.message : "Login failed. Check your credentials.";
-      setError(message);
+      setError(formatApiError(err, "Login failed. Check your credentials."));
     } finally {
       setSubmitting(false);
     }

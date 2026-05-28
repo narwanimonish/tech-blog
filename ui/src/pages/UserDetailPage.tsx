@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
-  ApiClientError,
   deleteUser,
+  formatApiError,
   getUser,
   updateUser,
   updateUserRole,
@@ -41,7 +41,7 @@ export function UserDetailPage() {
       })
       .catch((err: unknown) => {
         setUser(null);
-        setError(err instanceof ApiClientError ? err.message : "Failed to load user");
+        setError(formatApiError(err, "Failed to load user"));
       })
       .finally(() => setLoading(false));
   }, [token, userId]);
@@ -77,7 +77,7 @@ export function UserDetailPage() {
         await refreshCurrentUser();
       }
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to update profile");
+      setError(formatApiError(err, "Failed to update profile"));
     } finally {
       setBusy(false);
     }
@@ -94,7 +94,7 @@ export function UserDetailPage() {
       setUser(updated);
       setRole(updated.role);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to change role");
+      setError(formatApiError(err, "Failed to change role"));
     } finally {
       setBusy(false);
     }
@@ -109,7 +109,7 @@ export function UserDetailPage() {
       await deleteUser(token, user.userId);
       navigate("/users");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to delete user");
+      setError(formatApiError(err, "Failed to delete user"));
     } finally {
       setBusy(false);
     }

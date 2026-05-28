@@ -2,8 +2,14 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export function Layout() {
-  const { email, currentUser, logout, loading, isAdmin } = useAuth();
+  const { email, currentUser, profileError, logout, loading, isAdmin } = useAuth();
   const profilePath = currentUser ? `/users/${currentUser.userId}` : "/users";
+
+  const profileLine = loading
+    ? "Loading profile..."
+    : profileError
+      ? `${email ?? "Signed in"} · profile unavailable`
+      : `${email ?? "Signed in"} · role ${currentUser?.role ?? "unknown"}`;
 
   return (
     <div className="app-shell">
@@ -11,15 +17,15 @@ export function Layout() {
         <div>
           <h1 style={{ margin: 0 }}>Tech Blog</h1>
           <p className="muted" style={{ margin: "4px 0 0" }}>
-            {loading
-              ? "Loading profile..."
-              : `${email ?? "Signed in"} · role ${currentUser?.role ?? "unknown"}`}
+            {profileLine}
           </p>
         </div>
         <button type="button" className="secondary" onClick={logout}>
           Sign out
         </button>
       </header>
+
+      {profileError ? <div className="error">{profileError}</div> : null}
 
       <nav className="nav">
         <NavLink to="/posts">Posts</NavLink>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ApiClientError, deletePost, getPost } from "../api/client";
+import { deletePost, formatApiError, getPost } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Post } from "../types";
 import { formatDate } from "../utils/format";
@@ -35,7 +35,7 @@ export function PostDetailPage() {
       .then(setPost)
       .catch((err: unknown) => {
         setPost(null);
-        setError(err instanceof ApiClientError ? err.message : "Failed to load post");
+        setError(formatApiError(err, "Failed to load post"));
       })
       .finally(() => setLoading(false));
   }, [token, postId, initialPost]);
@@ -57,7 +57,7 @@ export function PostDetailPage() {
       await deletePost(token, post.postId);
       navigate("/posts");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to delete post");
+      setError(formatApiError(err, "Failed to delete post"));
     } finally {
       setBusy(false);
     }

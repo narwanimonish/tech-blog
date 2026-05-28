@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ApiClientError, deleteUser, listUsers } from "../api/client";
+import { deleteUser, formatApiError, listUsers } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { User } from "../types";
 
@@ -17,7 +17,7 @@ export function UsersPage() {
     listUsers(token)
       .then(setUsers)
       .catch((err: unknown) => {
-        setError(err instanceof ApiClientError ? err.message : "Failed to load users");
+        setError(formatApiError(err, "Failed to load users"));
       });
   }, [token, isAdmin]);
 
@@ -47,7 +47,7 @@ export function UsersPage() {
       await deleteUser(token, userId);
       setUsers(await listUsers(token));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to delete user");
+      setError(formatApiError(err, "Failed to delete user"));
     } finally {
       setBusy(false);
     }
