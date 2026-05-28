@@ -97,7 +97,26 @@ Upload the built UI to S3 and invalidate CloudFront:
 make ui-deploy
 ```
 
-### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack"
+### If Lambda stack fails: "Cannot update/delete export ... as it is in use by TechBlogApiStack"
+
+The **live** API stack still imports a CloudFormation export from the Lambda stack (historically the shared `SharedLayer` export). Lambda cannot publish a new layer version until that import is removed.
+
+**Fix (code is already in place):** the authorizer layer is built inside `TechBlogApiStack`, not imported from `TechBlogLambdaStack`.
+
+**Deploy order (also enforced by `scripts/cdk-deploy-ordered.sh`):**
+
+```bash
+python backend/build.py
+cd infrastructure
+npx cdk deploy TechBlogApiStack --require-approval never   # drops SharedLayer import
+npx cdk deploy TechBlogLambdaStack --require-approval never  # updates layer
+npx cdk deploy TechBlogWarmerStack TechBlogFrontendStack --require-approval never
+npx cdk deploy TechBlogApiStack --require-approval never   # optional catch-up
+```
+
+CI uses `bash scripts/cdk-deploy-ordered.sh`, which **aborts before Lambda** if the live Api template still contains `ExportsOutputRefSharedLayer`.
+
+### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack" (legacy Lambdas)
 
 The **live** API stack in AWS still imports the old Lambda exports. You must update the API stack so it stops using them, then you can remove the legacy Lambdas. Do this **exact order**:
 
