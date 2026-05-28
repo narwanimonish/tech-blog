@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from aws_cdk import aws_events as events, aws_lambda as _lambda, Stack
+from aws_cdk import Stack, aws_events as events, aws_lambda as _lambda
+
 from constructs import Construct
 
 
