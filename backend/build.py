@@ -75,6 +75,18 @@ def _install_authorizer_dependencies() -> None:
     print(f"Installed authorizer deps for Lambda ({LAMBDA_PLATFORM}, cp{LAMBDA_PYTHON_VERSION})")
 
 
+def _verify_layer_bundle() -> None:
+    """Shared layer must stay pure Python (no vendored authorizer/native deps)."""
+    forbidden_names = {"jwt", "cryptography", "cffi", "pycparser", "_cffi_backend"}
+    for name in forbidden_names:
+        path = PYTHON / name
+        if path.exists():
+            raise SystemExit(f"layer_bundle must not contain {name!r} (authorizer deps belong in webservice/authorizer/)")
+
+    for shared_object in PYTHON.rglob("*.so"):
+        raise SystemExit(f"layer_bundle must not contain native libraries: {shared_object}")
+
+
 def main():
     if not COMMON.is_dir() or not CORE.is_dir():
         raise SystemExit("backend/common and backend/core must exist")
@@ -84,6 +96,7 @@ def main():
     PYTHON.mkdir(parents=True)
     shutil.copytree(COMMON, PYTHON / "common", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     shutil.copytree(CORE, PYTHON / "core", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    _verify_layer_bundle()
     print("Built layer_bundle/python/{common,core}")
 
     _install_authorizer_dependencies()
