@@ -1,7 +1,6 @@
 from aws_cdk import (
     Duration,
     aws_lambda as _lambda,
-    aws_logs as logs,
 )
 
 from constructs import Construct
@@ -24,8 +23,8 @@ class LambdaFunction(Construct):
     ):
         super().__init__(scope, id)
 
-        # log_retention on Function lets CDK own the log group; avoids "LogGroup already exists"
-        # when a group was auto-created before the stack claimed it.
+        # Do not set log_retention here — CDK's LogRetention custom resource often
+        # fails stack updates when Lambdas/layers change (log group already exists).
         fn_kwargs: dict = {
             "function_name": function_name,
             "runtime": _lambda.Runtime.PYTHON_3_12,
@@ -35,7 +34,6 @@ class LambdaFunction(Construct):
             "memory_size": memory_size,
             "environment": environment or {},
             "layers": layers or [],
-            "log_retention": logs.RetentionDays.ONE_WEEK,
         }
         if reserved_concurrent_executions is not None:
             fn_kwargs["reserved_concurrent_executions"] = reserved_concurrent_executions

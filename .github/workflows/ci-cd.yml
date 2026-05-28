@@ -183,6 +183,17 @@ jobs:
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
 
+      - name: Print stack events on failure
+        if: failure()
+        run: |
+          for stack in TechBlogLambdaStack TechBlogApiStack; do
+            echo "=== Recent events for $stack ==="
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --query "StackEvents[?ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='CREATE_FAILED'].[LogicalResourceId,ResourceStatusReason]" \
+              --output table || true
+          done
+
       - name: Upload frontend to S3
         run: bash scripts/deploy-frontend.sh
 
@@ -270,6 +281,17 @@ jobs:
       - name: CDK deploy
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 deploy --all --require-approval never
+
+      - name: Print stack events on failure
+        if: failure()
+        run: |
+          for stack in TechBlogLambdaStack TechBlogApiStack; do
+            echo "=== Recent events for $stack ==="
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --query "StackEvents[?ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='CREATE_FAILED'].[LogicalResourceId,ResourceStatusReason]" \
+              --output table || true
+          done
 
       - name: Upload frontend to S3
         run: bash scripts/deploy-frontend.sh
