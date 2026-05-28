@@ -6,12 +6,17 @@
 #
 # Fix in code: authorizer layer is built inside TechBlogApiStack (same layer_bundle asset).
 # Deploy order: update Api first (drops import), then Lambda (updates layer freely).
+#
+# IMPORTANT: Api/Lambda/Warmer deploys use --exclusively. Without it, `cdk deploy
+# TechBlogApiStack` also deploys TechBlogLambdaStack (stack dependency) and hits the
+# SharedLayer export lock before Api can drop the import.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}/infrastructure"
 
 CDK=(npx --yes aws-cdk@2.114.1 deploy --require-approval never)
+CDK_STACK=(npx --yes aws-cdk@2.114.1 deploy --require-approval never --exclusively)
 
 lambda_shared_layer_export_name() {
   aws cloudformation list-exports \
@@ -70,12 +75,12 @@ ensure_no_shared_layer_imports() {
 
   while stacks_importing_shared_layer_export "$export_name"; do
     if [[ "$attempt" -gt 3 ]]; then
-      echo "ERROR: stacks still import ${export_name} after 3 Api deploy attempts."
+      echo "ERROR: stacks still import ${export_name} after 3 exclusive Api deploy attempts."
       print_shared_layer_export_status
       exit 1
     fi
-    echo "=== TechBlogApiStack (attempt ${attempt}: drop SharedLayer import) ==="
-    "${CDK[@]}" TechBlogApiStack
+    echo "=== TechBlogApiStack (attempt ${attempt}: drop SharedLayer import, --exclusively) ==="
+    "${CDK_STACK[@]}" TechBlogApiStack
     wait_for_stack TechBlogApiStack
     export_name=$(lambda_shared_layer_export_name)
     attempt=$((attempt + 1))
@@ -91,19 +96,19 @@ if ! aws cloudformation describe-stacks --stack-name TechBlogLambdaStack >/dev/n
   echo "=== Greenfield: TechBlogLambdaStack ==="
   "${CDK[@]}" TechBlogLambdaStack
   echo "=== Greenfield: TechBlogApiStack, TechBlogWarmerStack, TechBlogFrontendStack ==="
-  "${CDK[@]}" TechBlogApiStack TechBlogWarmerStack TechBlogFrontendStack
+  "${CDK_STACK[@]}" TechBlogApiStack TechBlogWarmerStack TechBlogFrontendStack
   exit 0
 fi
 
 print_shared_layer_export_status
 ensure_no_shared_layer_imports
 
-echo "=== TechBlogLambdaStack (layer + API handlers) ==="
-"${CDK[@]}" TechBlogLambdaStack
+echo "=== TechBlogLambdaStack (layer + API handlers, --exclusively) ==="
+"${CDK_STACK[@]}" TechBlogLambdaStack
 wait_for_stack TechBlogLambdaStack
 
-echo "=== TechBlogWarmerStack, TechBlogFrontendStack ==="
-"${CDK[@]}" TechBlogWarmerStack TechBlogFrontendStack
+echo "=== TechBlogWarmerStack, TechBlogFrontendStack (--exclusively) ==="
+"${CDK_STACK[@]}" TechBlogWarmerStack TechBlogFrontendStack
 
-echo "=== TechBlogApiStack (final sync) ==="
-"${CDK[@]}" TechBlogApiStack
+echo "=== TechBlogApiStack (final sync, --exclusively) ==="
+"${CDK_STACK[@]}" TechBlogApiStack

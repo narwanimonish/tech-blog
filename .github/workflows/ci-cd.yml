@@ -11,7 +11,8 @@ name: CI/CD Pipeline
 #
 # GitHub setup: Settings → Environments → create "development" and "production"
 #   Add secret AWS_ROLE_ARN in each (use different IAM roles / accounts for prod).
-#   On "production": enable Required reviewers (and optional wait timer).
+#   On "production": enable Required reviewers (and optional
+ wait timer).
 
 on:
   push:
@@ -194,11 +195,17 @@ jobs:
             aws cloudformation list-imports --export-name "${EXPORT}" --output table || true
           fi
           for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
-            echo "=== Recent events for $stack ==="
+            echo "=== Failed events for $stack ==="
             aws cloudformation describe-stack-events \
               --stack-name "$stack" \
               --query "StackEvents[?ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='CREATE_FAILED'].[LogicalResourceId,ResourceStatusReason]" \
-              --output table || true
+              --output table 2>/dev/null || echo "(stack missing or no failed events)"
+            echo "=== Last 15 events for $stack ==="
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --max-items 15 \
+              --query "StackEvents[].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+              --output table 2>/dev/null || echo "(stack missing)"
           done
 
       - name: Upload frontend to S3
@@ -300,11 +307,17 @@ jobs:
             aws cloudformation list-imports --export-name "${EXPORT}" --output table || true
           fi
           for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
-            echo "=== Recent events for $stack ==="
+            echo "=== Failed events for $stack ==="
             aws cloudformation describe-stack-events \
               --stack-name "$stack" \
               --query "StackEvents[?ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='CREATE_FAILED'].[LogicalResourceId,ResourceStatusReason]" \
-              --output table || true
+              --output table 2>/dev/null || echo "(stack missing or no failed events)"
+            echo "=== Last 15 events for $stack ==="
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --max-items 15 \
+              --query "StackEvents[].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+              --output table 2>/dev/null || echo "(stack missing)"
           done
 
       - name: Upload frontend to S3

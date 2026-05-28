@@ -108,13 +108,15 @@ The **live** API stack still imports a CloudFormation export from the Lambda sta
 ```bash
 python backend/build.py
 cd infrastructure
-npx cdk deploy TechBlogApiStack --require-approval never   # drops SharedLayer import
-npx cdk deploy TechBlogLambdaStack --require-approval never  # updates layer
-npx cdk deploy TechBlogWarmerStack TechBlogFrontendStack --require-approval never
-npx cdk deploy TechBlogApiStack --require-approval never   # optional catch-up
+# --exclusively is required: otherwise CDK deploys TechBlogLambdaStack first (dependency)
+# and hits the SharedLayer export lock before Api can drop the import.
+npx cdk deploy TechBlogApiStack --require-approval never --exclusively
+npx cdk deploy TechBlogLambdaStack --require-approval never --exclusively
+npx cdk deploy TechBlogWarmerStack TechBlogFrontendStack --require-approval never --exclusively
+npx cdk deploy TechBlogApiStack --require-approval never --exclusively
 ```
 
-CI uses `bash scripts/cdk-deploy-ordered.sh`, which **aborts before Lambda** if the live Api template still contains `ExportsOutputRefSharedLayer`.
+CI uses `bash scripts/cdk-deploy-ordered.sh`, which deploys Api **exclusively** first and **aborts before Lambda** if `list-imports` still shows an importer for the SharedLayer export.
 
 ### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack" (legacy Lambdas)
 
