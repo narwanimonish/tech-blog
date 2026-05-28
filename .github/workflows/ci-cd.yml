@@ -11,8 +11,7 @@ name: CI/CD Pipeline
 #
 # GitHub setup: Settings → Environments → create "development" and "production"
 #   Add secret AWS_ROLE_ARN in each (use different IAM roles / accounts for prod).
-#   On "production": enable Required reviewers (and optional
- wait timer).
+#   On "production": enable Required reviewers (and optional wait timer).
 
 on:
   push:
