@@ -96,3 +96,11 @@ def test_put_user_role_denied_for_reader_even_with_valid_path(_mock_role):
     ok, msg = role_util.is_user_action_valid(event)
     assert ok is False
     assert "users.fullaccess" in msg
+
+
+@patch.object(role_util, "_get_user_role")
+def test_resolve_user_role_prefers_authorizer_context(mock_get_role):
+    event = {"requestContext": {"authorizer": {"sub": "user-1", "role": "writer"}}}
+    role = role_util.resolve_user_role(event)
+    assert role == "writer"
+    mock_get_role.assert_not_called()

@@ -236,7 +236,7 @@ def _role_has_permission(role_permissions: dict, required_permission: str) -> bo
     return required_permission.strip().lower() in effective
 
 
-def _get_user_role(user_id: str, users_table_name: str) -> str:
+def get_user_role(user_id: str, users_table_name: str) -> str:
     """Look up user in DynamoDB users table; return role field or default_role."""
     if not users_table_name or not user_id:
         return _get_role_permissions_config()[1]
@@ -254,6 +254,26 @@ def _get_user_role(user_id: str, users_table_name: str) -> str:
         return _get_role_permissions_config()[1]
 
 
+# Backward-compatible alias for tests and internal callers.
+_get_user_role = get_user_role
+
+
+def resolve_user_role(event: dict, user_id: str | None = None) -> str:
+    """
+    Resolve application role for RBAC.
+    Prefer role injected by the authorizer context; fall back to DynamoDB lookup.
+    """
+    authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
+    ctx_role = (authorizer.get("role") or "").strip().lower()
+    roles, _default = _get_role_permissions_config()
+    if ctx_role in roles:
+        return ctx_role
+
+    sub = user_id or authorizer.get("sub") or authorizer.get("principalId") or ""
+    users_table = os.environ.get("usersStoreTable", "")
+    return _get_user_role(sub, users_table)
+
+
 def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool, str]:
     """
     Validate whether the user is authorized to perform the action (path + method).
@@ -266,8 +286,7 @@ def is_user_action_valid(event: dict, user_id: str | None = None) -> tuple[bool,
     if not sub:
         return False, "Missing user identity (sub)"
 
-    users_table = os.environ.get("usersStoreTable", "")
-    role = _get_user_role(sub, users_table)
+    role = resolve_user_role(event, user_id=sub)
     roles_config, _ = _get_role_permissions_config()
     role_perms = roles_config.get(role, {})
     if not role_perms and role != "admin":

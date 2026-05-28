@@ -10,7 +10,7 @@ import logging
 import os
 
 import boto3
-from common import simple_api_util
+from common import simple_api_util, warmup_util
 from core.users.service import UsersService
 
 LOGGER = logging.getLogger()
@@ -25,6 +25,9 @@ SERVICE = UsersService(TABLE) if TABLE else None
 
 
 def lambda_handler(event, context):
+    if warmup_util.is_warmup_event(event):
+        return warmup_util.api_warmup_response()
+
     request_id = getattr(context, "aws_request_id", "unknown")
     LOGGER.info("auth_login start request_id=%s", request_id)
 

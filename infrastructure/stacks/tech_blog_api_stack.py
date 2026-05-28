@@ -14,7 +14,9 @@ from config.prod import ProdConfig
 from constructs import Construct
 from lambda_config import get_lambda_settings
 from services.lambda_function import LambdaFunction
+from services.lambda_warmer import LambdaWarmer
 from services.rest_api_gateway import RestApiGateway
+from stacks.tech_blog_data_stack import TechBlogDataStack
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
 
 
@@ -27,11 +29,13 @@ class TechBlogApiStack(Stack):
         construct_id: str,
         config: DevConfig | ProdConfig,
         lambda_stack: TechBlogLambdaStack,
+        data_stack: TechBlogDataStack,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
         app_name = config.APP_NAME
         auth_cfg = get_lambda_settings("authorizer")
+        users_table = data_stack.users_table
 
         # Authorizer Lambda in this stack (avoids circular dependency with Lambda stack)
         authorizer_lambda = LambdaFunction(
@@ -40,10 +44,14 @@ class TechBlogApiStack(Stack):
             function_name=f"{app_name}-api-authorizer",
             entry_path="../backend/webservice/authorizer",
             handler="runtime.authorizer.lambda_handler",
+            layers=[lambda_stack.shared_layer],
             timeout_seconds=auth_cfg["timeout_seconds"],
             memory_size=auth_cfg["memory_size"],
             reserved_concurrent_executions=auth_cfg["reserved_concurrent_executions"],
-            environment={"USER_POOL_REGION": self.region},
+            environment={
+                "USER_POOL_REGION": self.region,
+                "usersStoreTable": users_table.table.table_name,
+            },
         )
         authorizer_lambda.function.add_to_role_policy(
             iam.PolicyStatement(
@@ -52,6 +60,7 @@ class TechBlogApiStack(Stack):
                 resources=["*"],
             )
         )
+        users_table.table.grant_read_data(authorizer_lambda.function)
 
         api = RestApiGateway(
             self,
@@ -73,6 +82,13 @@ class TechBlogApiStack(Stack):
             "AllowApiGwInvoke",
             principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
             source_arn=api.api.arn_for_execute_api("*"),
+        )
+
+        LambdaWarmer(
+            self,
+            "AuthorizerWarmer",
+            functions=[authorizer_lambda.function],
+            interval_minutes=5,
         )
 
         # All users routes → single users Lambda

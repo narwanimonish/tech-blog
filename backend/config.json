@@ -1,31 +1,25 @@
 {
     "users_api": {
-        "reserved_concurrency": 2,
         "timeout": 60,
         "memory_size": 512
     },
     "posts_api": {
-        "reserved_concurrency": 2,
         "timeout": 60,
         "memory_size": 512
     },
     "cognito_login": {
-        "reserved_concurrency": 2,
         "timeout": 60,
         "memory_size": 512
     },
     "cognito_post_confirmation": {
-        "reserved_concurrency": 2,
         "timeout": 60,
         "memory_size": 512
     },
     "cognito_post_authentication": {
-        "reserved_concurrency": 2,
         "timeout": 60,
         "memory_size": 512
     },
     "authorizer": {
-        "reserved_concurrency": 2,
         "timeout": 60,
         "memory_size": 512
     }

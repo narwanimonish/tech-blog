@@ -13,7 +13,7 @@ import logging
 import os
 
 import boto3
-from common import role_util, simple_api_util
+from common import role_util, simple_api_util, warmup_util
 from core.posts.service import PostsService
 
 LOGGER = logging.getLogger()
@@ -31,6 +31,9 @@ def _creator_email(event):
 
 
 def lambda_handler(event, context):
+    if warmup_util.is_warmup_event(event):
+        return warmup_util.api_warmup_response()
+
     request_id = getattr(context, "aws_request_id", "unknown")
     method = (event.get("httpMethod") or "").upper()
     post_id = (event.get("pathParameters") or {}).get("postId")

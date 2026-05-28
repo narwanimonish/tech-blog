@@ -13,7 +13,7 @@ import logging
 import os
 
 import boto3
-from common import role_util, simple_api_util
+from common import role_util, simple_api_util, warmup_util
 from common.errors import AppError
 from core.users.service import UsersService
 
@@ -53,7 +53,7 @@ def _caller_is_admin(event: dict) -> bool:
     sub = _caller_sub(event)
     if not sub:
         return False
-    role = role_util._get_user_role(sub, TABLE_NAME)
+    role = role_util.resolve_user_role(event)
     return role == "admin"
 
 
@@ -80,6 +80,9 @@ def _profile_update_payload(data: dict) -> dict:
 
 
 def lambda_handler(event, context):
+    if warmup_util.is_warmup_event(event):
+        return warmup_util.api_warmup_response()
+
     request_id = getattr(context, "aws_request_id", "unknown")
     method = (event.get("httpMethod") or "").upper()
     user_id = (event.get("pathParameters") or {}).get("userId")

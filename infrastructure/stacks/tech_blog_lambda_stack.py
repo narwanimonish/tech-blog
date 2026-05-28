@@ -15,6 +15,7 @@ from constructs import Construct
 from lambda_config import get_lambda_settings
 from services.dynamodb_table import DynamoDBTable
 from services.lambda_function import LambdaFunction
+from services.lambda_warmer import LambdaWarmer
 from services.shared_layer import SharedLayer
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -44,6 +45,7 @@ class TechBlogLambdaStack(Stack):
             asset_path="../backend/layer_bundle",
         )
         layer = shared_layer.get_layer()
+        self.shared_layer = layer
 
         users_env = {
             "usersStoreTable": users_table.table.table_name,
@@ -123,4 +125,15 @@ class TechBlogLambdaStack(Stack):
                 actions=["cognito-idp:InitiateAuth", "cognito-idp:GetUser"],
                 resources=["*"],
             )
+        )
+
+        LambdaWarmer(
+            self,
+            "ApiLambdaWarmer",
+            functions=[
+                self.users_api.function,
+                self.posts_api.function,
+                self.auth_login.function,
+            ],
+            interval_minutes=5,
         )

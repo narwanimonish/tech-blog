@@ -8,16 +8,21 @@ import logging
 import os
 
 import boto3
+from common import role_util, warmup_util
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
 
 REGION = os.environ.get("USER_POOL_REGION", os.environ.get("AWS_REGION", "us-east-1"))
+USERS_TABLE = os.environ.get("usersStoreTable", "")
 COGNITO = boto3.client("cognito-idp", region_name=REGION)
 
 
 def lambda_handler(event, context):
     """Validate token and return API Gateway policy."""
+    if warmup_util.is_warmup_event(event):
+        return warmup_util.authorizer_warmup_response()
+
     request_id = getattr(context, "aws_request_id", "unknown")
     method_arn = event.get("methodArn") or ""
     LOGGER.info("authorizer start request_id=%s methodArn=%s", request_id, method_arn)
@@ -35,6 +40,8 @@ def lambda_handler(event, context):
             resp["Username"],
         )
         ctx = context_attrs(resp)
+        if USERS_TABLE and principal_id:
+            ctx["role"] = role_util.get_user_role(principal_id, USERS_TABLE)
         LOGGER.info(
             "authorizer allow request_id=%s principalId=%s context_keys=%s",
             request_id,
