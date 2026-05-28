@@ -1,7 +1,7 @@
 # Tech-blog — TaskMaster-style orchestration names (thin wrappers).
 # Run from repository root: cd /path/to/tech-blog
 
-.PHONY: test lint generate cdk-synth cdk-drop-layer-import ui-install ui-build ui-deploy help
+.PHONY: test lint generate cdk-synth cdk-drop-layer-import cdk-diagnose-api ui-install ui-build ui-deploy help
 
 PYTHON ?= python3
 PYTEST = PYTHONPATH=backend $(PYTHON) -m pytest backend/tests
@@ -16,6 +16,7 @@ help:
 	@echo "  make ui-build    - npm run build in ui/"
 	@echo "  make cdk-synth   - CDK synth (backend layer build + synth)"
 	@echo "  make cdk-drop-layer-import - deploy Api only; drop SharedLayer cross-stack import"
+	@echo "  make cdk-diagnose-api    - check stack status, export lock, API smoke tests"
 
 test:
 	$(PYTEST) -v
@@ -36,6 +37,9 @@ cdk-synth:
 
 cdk-drop-layer-import:
 	bash scripts/drop-shared-layer-import.sh
+
+cdk-diagnose-api:
+	bash scripts/diagnose-api.sh
 
 ui-install:
 	cd ui && npm install
