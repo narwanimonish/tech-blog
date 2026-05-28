@@ -3,10 +3,7 @@
 
 def is_warmup_event(event: dict) -> bool:
     """True when invoked directly by EventBridge on a schedule (not API Gateway)."""
-    return (
-        event.get("source") == "aws.events"
-        and event.get("detail-type") == "Scheduled Event"
-    )
+    return event.get("source") == "aws.events" and event.get("detail-type") == "Scheduled Event"
 
 
 def api_warmup_response():
