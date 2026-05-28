@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
-
 from common import cognito_jwt_util
 
 
