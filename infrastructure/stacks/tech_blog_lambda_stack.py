@@ -44,7 +44,6 @@ class TechBlogLambdaStack(Stack):
             asset_path="../backend/layer_bundle",
         )
         layer = shared_layer.get_layer()
-        self.shared_layer = layer
 
         users_env = {
             "usersStoreTable": users_table.table.table_name,
