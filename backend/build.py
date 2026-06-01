@@ -47,7 +47,14 @@ DOCKER_CYTHON_SETUP = (
     "elif command -v yum >/dev/null; then yum install -y gcc; "
     "else echo 'Cannot install gcc: no supported package manager' >&2; exit 1; fi && "
     "pip install -q 'cython>=3.0.12,<4' 'setuptools>=69.0.0' 'PyJWT[crypto]>=2.8.0,<3' && "
-    "cd /var/task/layer/python && python /var/task/setup_layer_cython.py"
+    "cd /var/task/layer/python && python /var/task/setup_layer_cython.py && "
+    "rm -rf build *.egg-info && "
+    "find common core -type f \\( -name '*.c' -o -name '*.cpp' \\) -delete && "
+    "find common core -type f -name '*.py' ! -name '__init__.py' | while IFS= read -r py; do "
+    'stem=$(basename "$py" .py); dir=$(dirname "$py"); '
+    'if compgen -G "$dir/${stem}"*.so >/dev/null; then rm -f "$py"; fi; '
+    "done && "
+    'chown -R "${HOST_UID}:${HOST_GID}" /var/task/layer/python'
 )
 FORBIDDEN_LAYER_ROOT = {"jwt", "cryptography", "cffi", "pycparser", "_cffi_backend"}
 
@@ -153,6 +160,10 @@ def _run_cython_compile_docker(python_dir: Path) -> None:
             "linux/amd64",
             "--entrypoint",
             "/bin/bash",
+            "-e",
+            f"HOST_UID={os.getuid()}",
+            "-e",
+            f"HOST_GID={os.getgid()}",
             "-v",
             f"{python_dir}:/var/task/layer/python",
             "-v",
@@ -163,7 +174,6 @@ def _run_cython_compile_docker(python_dir: Path) -> None:
         ],
         check=True,
     )
-    _remove_generated_cython_artifacts(python_dir)
 
 
 def _cythonize_layer_bundle() -> None:
