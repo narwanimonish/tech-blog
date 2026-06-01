@@ -2,6 +2,31 @@ from aws_cdk import Duration, aws_apigateway as apigw, aws_lambda as _lambda
 
 from constructs import Construct
 
+_CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "'*'",
+    "Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+    "Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS'",
+}
+
+
+def _add_cors_gateway_responses(api: apigw.RestApi) -> None:
+    """Add CORS headers to API Gateway error responses (authorizer 401/403/502, etc.)."""
+    for response_type in (
+        apigw.ResponseType.DEFAULT_4_XX,
+        apigw.ResponseType.DEFAULT_5_XX,
+        apigw.ResponseType.UNAUTHORIZED,
+        apigw.ResponseType.ACCESS_DENIED,
+        apigw.ResponseType.AUTHORIZER_FAILURE,
+        apigw.ResponseType.AUTHORIZER_CONFIGURATION_ERROR,
+        apigw.ResponseType.INTEGRATION_FAILURE,
+        apigw.ResponseType.INTEGRATION_TIMEOUT,
+    ):
+        api.add_gateway_response(
+            f"Cors{response_type.response_type}",
+            type=response_type,
+            response_headers=_CORS_HEADERS,
+        )
+
 
 class RestApiGateway(Construct):
     def __init__(
@@ -38,6 +63,7 @@ class RestApiGateway(Construct):
             ),
             **kwargs,
         )
+        _add_cors_gateway_responses(self.api)
 
     def add_lambda_resource(
         self,

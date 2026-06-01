@@ -29,21 +29,26 @@ def validate_access_token(
     client_id: str,
 ) -> dict:
     """
-    Verify RS256 signature, issuer, audience, expiry, and token_use=access.
+    Verify RS256 signature, issuer, client_id, expiry, and token_use=access.
     Returns JWT claims (sub, email, etc.).
     """
     issuer = _issuer(region, user_pool_id)
     signing_key = _jwks_client(region, user_pool_id).get_signing_key_from_jwt(token)
+    # Cognito access tokens carry app client id in `client_id`, not `aud` (ID tokens use `aud`).
     claims = jwt.decode(
         token,
         signing_key.key,
         algorithms=["RS256"],
-        audience=client_id,
         issuer=issuer,
         options={"require": ["exp", "sub", "token_use"]},
     )
     if claims.get("token_use") != "access":
         raise jwt.InvalidTokenError("token_use must be access")
+    token_client_id = claims.get("client_id") or claims.get("aud")
+    if isinstance(token_client_id, list):
+        token_client_id = token_client_id[0] if token_client_id else None
+    if not token_client_id or str(token_client_id) != str(client_id):
+        raise jwt.InvalidTokenError("client_id mismatch")
     return claims
 
 

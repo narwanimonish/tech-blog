@@ -11,7 +11,7 @@ def test_validate_access_token_returns_claims(mock_jwks_client):
     signing_key.key = "public-key"
     mock_jwks_client.return_value.get_signing_key_from_jwt.return_value = signing_key
 
-    claims = {"sub": "user-1", "email": "a@example.com", "token_use": "access"}
+    claims = {"sub": "user-1", "email": "a@example.com", "token_use": "access", "client_id": "client-1"}
     with patch("common.cognito_jwt_util.jwt.decode", return_value=claims) as mock_decode:
         result = cognito_jwt_util.validate_access_token(
             "token",
@@ -22,6 +22,25 @@ def test_validate_access_token_returns_claims(mock_jwks_client):
 
     assert result == claims
     mock_decode.assert_called_once()
+    _, kwargs = mock_decode.call_args
+    assert "audience" not in kwargs
+
+
+@patch("common.cognito_jwt_util._jwks_client")
+def test_validate_access_token_rejects_wrong_client_id(mock_jwks_client):
+    signing_key = MagicMock()
+    signing_key.key = "public-key"
+    mock_jwks_client.return_value.get_signing_key_from_jwt.return_value = signing_key
+
+    claims = {"sub": "user-1", "token_use": "access", "client_id": "other-client"}
+    with patch("common.cognito_jwt_util.jwt.decode", return_value=claims):
+        with pytest.raises(jwt.InvalidTokenError, match="client_id mismatch"):
+            cognito_jwt_util.validate_access_token(
+                "token",
+                region="us-east-1",
+                user_pool_id="pool-1",
+                client_id="client-1",
+            )
 
 
 def test_claims_to_authorizer_context_maps_known_fields():
