@@ -9,7 +9,6 @@ Run from layer_bundle/python after sources are copied:
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from Cython.Build import cythonize
