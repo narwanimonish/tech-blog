@@ -143,7 +143,7 @@ def _run_cython_compile_docker(python_dir: Path) -> None:
             f"{setup_script}:/var/task/setup_layer_cython.py:ro",
             LAMBDA_DOCKER_IMAGE,
             "-lc",
-            "pip install -q 'cython>=3.0.12,<4' 'PyJWT[crypto]>=2.8.0,<3' && "
+            "pip install -q 'cython>=3.0.12,<4' 'setuptools>=69.0.0' 'PyJWT[crypto]>=2.8.0,<3' && "
             "cd /var/task/layer/python && python /var/task/setup_layer_cython.py",
         ],
         check=True,
