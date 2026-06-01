@@ -26,8 +26,9 @@ Workflow: [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)
 
    | Secret | Purpose |
    |--------|---------|
-   | `POSTMAN_USERNAME` | Cognito user email (reader or writer is fine) |
+   | `POSTMAN_USERNAME` | **Admin** Cognito user email (required for full API perf) |
    | `POSTMAN_PASSWORD` | That user's password |
+   | `POSTMAN_DISPOSABLE_USER_ID` | *(Optional)* UUID of throwaway user for `DELETE /users` perf step |
 
    `baseUrl` is resolved from `TechBlogApiStack` `ApiUrl` in the deploy job (no separate secret needed).
 
@@ -52,9 +53,9 @@ After each deploy, the pipeline runs:
 
 1. **curl smoke test** — `GET /posts` without credentials (expect **401/403**).
 2. **Postman / Newman** (`scripts/postman-ci.sh pipeline`):
-   - **Smoke** folder — login → list posts → get post
-   - **Performance** folder — 10 iterations by default (read-only)
-   - JSON report uploaded as a workflow artifact (`postman-perf-*`)
+   - **Smoke** — all APIs once (login, users CRUD-ish, posts CRUD)
+   - **Performance - All APIs** — same flow × 10 iterations (default); creates/deletes a temp post each loop
+   - JSON report uploaded as artifact (`postman-perf-*`)
 
 Manual workflow dispatch can set **postman_perf_iterations** (`0` = smoke only). For heavier runs, use workflow **Postman performance (manual)**.
 

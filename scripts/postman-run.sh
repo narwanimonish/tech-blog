@@ -122,6 +122,7 @@ def resolve_api_url_from_aws() -> str | None:
 override_url = os.environ.get("POSTMAN_BASE_URL")
 env_username = os.environ.get("POSTMAN_USERNAME", "").strip()
 env_password = os.environ.get("POSTMAN_PASSWORD", "").strip()
+env_disposable_user = os.environ.get("POSTMAN_DISPOSABLE_USER_ID", "").strip()
 base_url = (override_url or values.get("baseUrl", "")).rstrip("/")
 username = env_username or values.get("username", "")
 password = env_password or values.get("password", "")
@@ -146,6 +147,8 @@ for entry in env.get("values", []):
         entry["value"] = env_username
     elif key == "password" and env_password:
         entry["value"] = env_password
+    elif key == "disposableUserId" and env_disposable_user:
+        entry["value"] = env_disposable_user
     if max_ms and key == "maxResponseMs":
         entry["value"] = max_ms
 
@@ -208,7 +211,7 @@ case "$MODE" in
   perf|performance)
     npx newman run "$COLLECTION" \
       -e "$RUN_ENV" \
-      --folder "Performance - Read APIs" \
+      --folder "Performance - All APIs" \
       -n "$PERF_ITERATIONS" \
       --delay-request "$PERF_DELAY_MS" \
       --reporters cli,json \

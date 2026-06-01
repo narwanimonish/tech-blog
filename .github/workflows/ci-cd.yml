@@ -6,8 +6,9 @@ name: CI/CD Pipeline
 #                             → Postman smoke + performance (Newman) after deploy
 #   workflow_dispatch:      manual dev or prod deploy (both use APP_ENV=dev for now)
 #
-# Postman in deploy jobs needs GitHub environment secrets:
-#   POSTMAN_USERNAME, POSTMAN_PASSWORD (Cognito test user; reader/writer OK for read-only perf folder)
+# Postman in deploy jobs needs GitHub environment secrets (admin Cognito user):
+#   POSTMAN_USERNAME, POSTMAN_PASSWORD
+# Optional: POSTMAN_DISPOSABLE_USER_ID for DELETE /users perf step
 #
 # NOTE: APP_ENV=prod cannot deploy into the existing TechBlogDataStack yet — it would try
 # to rename DynamoDB tables (dev → prod) and roll back. Real prod needs env-suffixed stacks
@@ -244,6 +245,7 @@ jobs:
         env:
           POSTMAN_USERNAME: ${{ secrets.POSTMAN_USERNAME }}
           POSTMAN_PASSWORD: ${{ secrets.POSTMAN_PASSWORD }}
+          POSTMAN_DISPOSABLE_USER_ID: ${{ secrets.POSTMAN_DISPOSABLE_USER_ID }}
           RESOLVE_API_URL_FROM_AWS: "1"
           MAX_RESPONSE_MS: "8000"
           PERF_ITERATIONS: ${{ github.event.inputs.postman_perf_iterations || '10' }}
@@ -377,6 +379,7 @@ jobs:
         env:
           POSTMAN_USERNAME: ${{ secrets.POSTMAN_USERNAME }}
           POSTMAN_PASSWORD: ${{ secrets.POSTMAN_PASSWORD }}
+          POSTMAN_DISPOSABLE_USER_ID: ${{ secrets.POSTMAN_DISPOSABLE_USER_ID }}
           RESOLVE_API_URL_FROM_AWS: "1"
           MAX_RESPONSE_MS: "8000"
           PERF_ITERATIONS: ${{ github.event.inputs.postman_perf_iterations || '10' }}

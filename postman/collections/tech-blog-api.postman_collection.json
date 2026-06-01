@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "tech-blog-api-collection",
     "name": "Tech Blog API",
-    "description": "REST API for users and posts. Import with `postman/environments/template.postman_environment.json` or copy `local.postman_environment.json.example` to `local.postman_environment.json`.\n\n**Smoke:** folder `Smoke` — one pass, functional checks.\n\n**Performance:** folder `Performance - Read APIs` — read-only loop (login → list posts → get post). Run via Newman (`make postman-perf`) or Postman Performance runner.",
+    "description": "All REST endpoints from backend/api-spec.yaml.\n\n**Requires admin** Cognito user for full coverage (users list/role/delete).\n\nFolders:\n- `Smoke` \u2014 one pass, all APIs\n- `Performance - All APIs` \u2014 same flow with response-time assertions (CI pipeline)\n\nOptional env `disposableUserId` enables step 11 (DELETE user) on a throwaway account only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -27,212 +27,24 @@
       "item": [
         {
           "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Login returns 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const body = pm.response.json();",
-                  "pm.expect(body.accessToken, 'accessToken present').to.be.a('string').and.not.empty;",
-                  "pm.environment.set('accessToken', body.accessToken);"
-                ]
-              }
-            }
-          ],
           "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
             "auth": {
               "type": "noauth"
             },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
-            },
-            "description": "Public login. Sets `accessToken` in the active environment."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Users",
-      "item": [
-        {
-          "name": "List users",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.expect(body.items).to.be.an('array');",
-                  "if (body.items.length > 0) {",
-                  "    pm.environment.set('userId', body.items[0].userId);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"]
             }
           },
-          "response": []
-        },
-        {
-          "name": "Get user",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.expect(body.userId).to.eql(pm.environment.get('userId'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Posts",
-      "item": [
-        {
-          "name": "List posts",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.expect(body.items).to.be.an('array');",
-                  "pm.expect(body.limit).to.be.a('number');",
-                  "if (body.items.length > 0) {",
-                  "    pm.environment.set('postId', body.items[0].postId);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/posts",
-              "host": ["{{baseUrl}}"],
-              "path": ["posts"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get post",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.expect(body.postId).to.eql(pm.environment.get('postId'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/posts/{{postId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["posts", "{{postId}}"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create post",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.expect(body.postId).to.be.a('string').and.not.empty;",
-                  "pm.environment.set('postId', body.postId);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Postman test {{$timestamp}}\",\n  \"body\": \"Created by Postman collection\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/posts",
-              "host": ["{{baseUrl}}"],
-              "path": ["posts"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Smoke",
-      "description": "Single-pass functional smoke test against a deployed API.",
-      "item": [
-        {
-          "name": "01 Login",
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -240,15 +52,23 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set('accessToken', pm.response.json().accessToken);"
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken, 'accessToken present').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('accessToken', body.accessToken);"
                 ]
               }
             }
-          ],
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Smoke",
+      "description": "Single-pass functional test for every API endpoint.",
+      "item": [
+        {
+          "name": "01 Login",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -256,16 +76,39 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
-            },
-            "url": "{{baseUrl}}/auth/login"
+            }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken, 'accessToken present').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('accessToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "02 List posts",
+          "name": "02 List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users"
+          },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -273,31 +116,74 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "const items = pm.response.json().items;",
-                  "pm.expect(items).to.be.an('array');",
-                  "if (items.length > 0) { pm.environment.set('postId', items[0].postId); }"
+                  "const body = pm.response.json();",
+                  "pm.expect(body.items).to.be.an('array');",
+                  "const username = pm.environment.get('username');",
+                  "const match = body.items.find(function (u) { return u.email === username; });",
+                  "if (match) { pm.environment.set('userId', match.userId); }"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "03 Get user",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/posts"
+            "url": "{{baseUrl}}/users/{{userId}}"
           },
-          "response": []
-        },
-        {
-          "name": "03 Get post",
+          "response": [],
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.environment.get('postId')) {",
-                  "    pm.execution.skipRequest();",
-                  "}"
+                  "if (!pm.environment.get('userId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('userEmail', body.email);",
+                  "pm.environment.set('userName', body.name || 'User');",
+                  "pm.environment.set('initialUserRole', body.role);",
+                  "pm.environment.set('userId', body.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"name\": \"{{userName}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('userId')) { pm.execution.skipRequest(); }"
                 ]
               }
             },
@@ -310,42 +196,71 @@
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "05 Update user role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"{{initialUserRole}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('userId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 List posts",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/posts/{{postId}}"
+            "url": "{{baseUrl}}/posts"
           },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Performance - Read APIs",
-      "description": "Read-only flow for load testing. Safe to repeat — no writes. Asserts response time against `maxResponseMs` (default 3000).",
-      "item": [
-        {
-          "name": "01 Login",
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
-                  "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Login response time OK', function () {",
-                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
-                  "});",
-                  "pm.environment.set('accessToken', pm.response.json().accessToken);"
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.items).to.be.an('array');"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "07 Create post",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -353,51 +268,246 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/posts",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
-            },
-            "url": "{{baseUrl}}/auth/login"
+              "raw": "{\n  \"title\": \"Perf {{$timestamp}}\",\n  \"body\": \"Postman performance test\"\n}"
+            }
           },
-          "response": []
-        },
-        {
-          "name": "02 List posts",
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
                   "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('List posts response time OK', function () {",
-                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
-                  "});",
-                  "const items = pm.response.json().items;",
-                  "if (items.length > 0) { pm.environment.set('postId', items[0].postId); }"
+                  "const body = pm.response.json();",
+                  "pm.expect(body.postId).to.be.a('string').and.not.empty;",
+                  "pm.environment.set('perfPostId', body.postId);",
+                  "pm.environment.set('postId', body.postId);"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "08 Get post",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/posts"
+            "url": "{{baseUrl}}/posts/{{perfPostId}}"
           },
-          "response": []
-        },
-        {
-          "name": "03 Get post",
+          "response": [],
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.environment.get('postId')) {",
-                  "    pm.execution.skipRequest();",
-                  "}"
+                  "if (!pm.environment.get('perfPostId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 Update post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/posts/{{perfPostId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Perf updated {{$timestamp}}\",\n  \"body\": \"Updated by Postman\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('perfPostId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 Delete post",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{perfPostId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('perfPostId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Delete user (optional)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const disposable = pm.environment.get('disposableUserId');",
+                  "const self = pm.environment.get('userId');",
+                  "if (!disposable || disposable === self) { pm.execution.skipRequest(); }",
+                  "pm.environment.set('userId', disposable);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Performance - All APIs",
+      "description": "Full API performance flow for CI. Creates then deletes a post each iteration. User delete runs only when disposableUserId is set.",
+      "item": [
+        {
+          "name": "01 Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken, 'accessToken present').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('accessToken', body.accessToken);",
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Login response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.items).to.be.an('array');",
+                  "const username = pm.environment.get('username');",
+                  "const match = body.items.find(function (u) { return u.email === username; });",
+                  "if (match) { pm.environment.set('userId', match.userId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Get user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('userId')) { pm.execution.skipRequest(); }"
                 ]
               }
             },
@@ -408,19 +518,309 @@
                 "exec": [
                   "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
                   "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Get post response time OK', function () {",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('userEmail', body.email);",
+                  "pm.environment.set('userName', body.name || 'User');",
+                  "pm.environment.set('initialUserRole', body.role);",
+                  "pm.environment.set('userId', body.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"name\": \"{{userName}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('userId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
                   "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
                   "});"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "05 Update user role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"{{initialUserRole}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('userId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 List posts",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/posts/{{postId}}"
+            "url": "{{baseUrl}}/posts"
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.items).to.be.an('array');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Create post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/posts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Perf {{$timestamp}}\",\n  \"body\": \"Postman performance test\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.postId).to.be.a('string').and.not.empty;",
+                  "pm.environment.set('perfPostId', body.postId);",
+                  "pm.environment.set('postId', body.postId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Get post",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{perfPostId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('perfPostId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 Update post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/posts/{{perfPostId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Perf updated {{$timestamp}}\",\n  \"body\": \"Updated by Postman\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('perfPostId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 Delete post",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{perfPostId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('perfPostId')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Delete user (optional)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const disposable = pm.environment.get('disposableUserId');",
+                  "const self = pm.environment.get('userId');",
+                  "if (!disposable || disposable === self) { pm.execution.skipRequest(); }",
+                  "pm.environment.set('userId', disposable);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

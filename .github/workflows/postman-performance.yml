@@ -40,6 +40,7 @@ jobs:
         env:
           POSTMAN_USERNAME: ${{ secrets.POSTMAN_USERNAME }}
           POSTMAN_PASSWORD: ${{ secrets.POSTMAN_PASSWORD }}
+          POSTMAN_DISPOSABLE_USER_ID: ${{ secrets.POSTMAN_DISPOSABLE_USER_ID }}
           RESOLVE_API_URL_FROM_AWS: "1"
           PERF_ITERATIONS: ${{ inputs.iterations }}
           PERF_DELAY_MS: ${{ inputs.delay_ms }}

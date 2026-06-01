@@ -1,18 +1,36 @@
 # Postman API testing
 
-Smoke and performance tests for the deployed Tech Blog API using a Postman collection and [Newman](https://github.com/postmanlabs/newman) (CLI runner).
+Smoke and performance tests for **every** Tech Blog API endpoint (`backend/api-spec.yaml`) using a Postman collection and [Newman](https://github.com/postmanlabs/newman).
 
 ## Layout
 
 ```
 postman/
-  collections/tech-blog-api.postman_collection.json
-  environments/template.postman_environment.json   # placeholders (safe to commit)
+  collections/tech-blog-api.postman_collection.json   # generated — see scripts/
+  scripts/generate-collection.py
+  environments/template.postman_environment.json
   environments/local.postman_environment.json.example
-  reports/                                       # Newman JSON reports (gitignored)
+  reports/
   package.json
 scripts/postman-run.sh
+scripts/postman-ci.sh
 ```
+
+Regenerate the collection after editing `generate-collection.py`:
+
+```bash
+python3 postman/scripts/generate-collection.py
+```
+
+## Credentials
+
+Use an **admin** Cognito user for full pipeline coverage (`POSTMAN_USERNAME` / `POSTMAN_PASSWORD`). Admin is required for:
+
+- `GET /users`
+- `PUT /users/{userId}/role`
+- Optional `DELETE /users/{userId}` (see below)
+
+Writer/reader accounts will fail on user-admin steps.
 
 ## Quick start
 
@@ -25,91 +43,74 @@ scripts/postman-run.sh
       postman/environments/local.postman_environment.json
    ```
 
-   Edit `baseUrl`, `username`, and `password`. Leave `baseUrl` empty to auto-resolve from `TechBlogApiStack` when AWS credentials are valid.
+   Edit `username` and `password` (admin). Leave `baseUrl` empty to auto-resolve from `TechBlogApiStack` when AWS credentials are valid.
 
-3. **Optional — resolve API URL from AWS:**
-
-   ```bash
-   RESOLVE_API_URL_FROM_AWS=1 bash scripts/postman-run.sh smoke
-   ```
-
-4. **Run smoke test** (single pass: login → list posts → get post):
+3. **Run smoke** (one pass, all APIs):
 
    ```bash
    make postman-smoke
-   # or
-   bash scripts/postman-run.sh smoke
    ```
 
-5. **Run performance test** (repeat read-only flow with timing assertions):
+4. **Run performance** (repeat full API flow):
 
    ```bash
    make postman-perf
-   # or
-   PERF_ITERATIONS=50 PERF_DELAY_MS=50 bash scripts/postman-run.sh perf
+   PERF_ITERATIONS=50 PERF_DELAY_MS=50 make postman-perf
    ```
-
-   Tune with:
 
    | Variable | Default | Meaning |
    |----------|---------|---------|
-   | `PERF_ITERATIONS` | `20` | How many times Newman runs the folder |
+   | `PERF_ITERATIONS` | `20` | Newman loop count |
    | `PERF_DELAY_MS` | `100` | Pause between requests (ms) |
    | `MAX_RESPONSE_MS` | `3000` | Fail if any request exceeds this (ms) |
 
-   JSON report is written under `postman/reports/perf-*.json`.
+## Endpoints exercised (Smoke & Performance)
 
-## Postman desktop (GUI)
+| # | Method | Path | Notes |
+|---|--------|------|-------|
+| 1 | POST | `/auth/login` | Public |
+| 2 | GET | `/users` | Admin |
+| 3 | GET | `/users/{userId}` | Own profile |
+| 4 | PUT | `/users/{userId}` | Idempotent profile update |
+| 5 | PUT | `/users/{userId}/role` | Sets same role (no-op) |
+| 6 | GET | `/posts` | |
+| 7 | POST | `/posts` | Creates temp post |
+| 8 | GET | `/posts/{postId}` | |
+| 9 | PUT | `/posts/{postId}` | |
+| 10 | DELETE | `/posts/{postId}` | Cleans up temp post |
+| 11 | DELETE | `/users/{userId}` | **Skipped** unless `disposableUserId` is set |
 
-1. **Import** `postman/collections/tech-blog-api.postman_collection.json`.
-2. **Import** your `local.postman_environment.json` and select it.
-3. **Functional smoke:** open folder **Smoke** → **Run** → Run collection (1 iteration).
-4. **Performance testing (Postman app):**
-   - Open the collection → **Run** → select folder **Performance - Read APIs**.
-   - Switch to the **Performance** tab (Postman v10+).
-   - Set virtual users, duration, and ramp profile.
-   - Start the run and review latency percentiles in the Postman performance report.
-
-   The same folder is used by Newman; GUI performance adds concurrent virtual users and richer charts.
-
-## Collection folders
-
-| Folder | Purpose |
-|--------|---------|
-| **Auth** | Login; sets `accessToken` |
-| **Users** / **Posts** | Manual CRUD exploration |
-| **Smoke** | CI-friendly single pass |
-| **Performance - Read APIs** | Login + GET posts + GET post; asserts status and `maxResponseMs` |
-
-Performance folder is **read-only** so repeated runs do not create or delete data.
-
-## Makefile targets
-
-```bash
-make postman-install   # npm install in postman/
-make postman-smoke     # functional smoke
-make postman-perf      # Newman performance loop (20 iterations)
-```
+Optional: set `POSTMAN_DISPOSABLE_USER_ID` (CI) or `disposableUserId` (local env) to a **throwaway** user UUID to enable step 11. Never point this at your admin account.
 
 ## CI / GitHub Actions
 
-Postman runs automatically **after deploy** in [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml):
+After deploy, [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml) runs `scripts/postman-ci.sh pipeline`:
 
-- **Smoke** — Newman folder `Smoke`
-- **Performance** — folder `Performance - Read APIs` (default **10** iterations on push; configurable on manual deploy)
+1. **Smoke** — folder `Smoke` (all APIs once)
+2. **Performance** — folder `Performance - All APIs` (default **10** iterations)
 
-Add GitHub environment secrets **`POSTMAN_USERNAME`** and **`POSTMAN_PASSWORD`** to `development` and `production`. The pipeline resolves `baseUrl` from `TechBlogApiStack`.
+Add environment secrets on `development` and `production`:
 
-Heavy manual runs: workflow **Postman performance (manual)** (default 50 iterations).
+| Secret | Value |
+|--------|--------|
+| `POSTMAN_USERNAME` | Admin Cognito email |
+| `POSTMAN_PASSWORD` | Admin password |
 
-Local CI parity:
+Optional: `POSTMAN_DISPOSABLE_USER_ID` for DELETE user perf step.
+
+Heavy manual runs: workflow **Postman performance (manual)**.
+
+## Makefile
 
 ```bash
-POSTMAN_USERNAME=you@example.com POSTMAN_PASSWORD='...' bash scripts/postman-ci.sh pipeline
+make postman-install
+make postman-smoke
+make postman-perf
+make postman-pipeline   # smoke + perf (like CI)
 ```
 
 ## Related docs
 
-- Sample requests and env vars: `backend/README.md` (Postman API Guide)
-- OpenAPI: `backend/api-spec.yaml`
-- API health check: `make cdk-diagnose-api`
+- `backend/README.md` — sample requests
+- `backend/api-spec.yaml` — OpenAPI
+- `docs/CI_CD.md` — pipeline secrets setup
