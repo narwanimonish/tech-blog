@@ -9,6 +9,7 @@ exclude = [
     "venv",
     "cdk.out",
     "frontend",
+    "backend/layer_bundle",
     "__pycache__"
 ]
 

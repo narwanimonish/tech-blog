@@ -120,8 +120,12 @@ jobs:
       - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
-      - name: Build Lambda layer bundle
-        run: python backend/build.py
+      - name: Build Lambda layer bundle (Cython)
+        env:
+          CYTHONIZE: "1"
+        run: |
+          python -m pip install -r backend/requirements-build.txt
+          python backend/build.py
 
       - name: CDK synth
         working-directory: infrastructure
@@ -170,8 +174,12 @@ jobs:
       - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
-      - name: Build Lambda layer bundle
-        run: python backend/build.py
+      - name: Build Lambda layer bundle (Cython)
+        env:
+          CYTHONIZE: "1"
+        run: |
+          python -m pip install -r backend/requirements-build.txt
+          python backend/build.py
 
       - name: Build frontend
         run: |
@@ -282,8 +290,12 @@ jobs:
       - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
-      - name: Build Lambda layer bundle
-        run: python backend/build.py
+      - name: Build Lambda layer bundle (Cython)
+        env:
+          CYTHONIZE: "1"
+        run: |
+          python -m pip install -r backend/requirements-build.txt
+          python backend/build.py
 
       - name: Build frontend
         run: |
