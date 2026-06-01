@@ -164,10 +164,16 @@ def api_flow(*, perf: bool) -> list[dict]:
             tests=assert_fn,
             body='{\n  "role": "{{initialUserRole}}"\n}',
         ),
-        request("06 List posts", "GET", "{{baseUrl}}/posts", tests=assert_fn + [
-            "const body = pm.response.json();",
-            "pm.expect(body.items).to.be.an('array');",
-        ]),
+        request(
+            "06 List posts",
+            "GET",
+            "{{baseUrl}}/posts",
+            tests=assert_fn
+            + [
+                "const body = pm.response.json();",
+                "pm.expect(body.items).to.be.an('array');",
+            ],
+        ),
         request(
             "07 Create post",
             "POST",
