@@ -44,9 +44,9 @@ class PostsService:
         LOGGER.info("Created post %s", data["postId"])
         return data
 
-    def list_posts(self):
-        """List all posts. Returns list of item dicts."""
-        return dynamodb_util.scan_all(self._table)
+    def list_posts(self, *, limit: int = 20, start_key: dict | None = None) -> dict:
+        """List one page of posts. Returns items and optional DynamoDB cursor."""
+        return dynamodb_util.scan_page(self._table, limit=limit, exclusive_start_key=start_key)
 
     def delete_post(self, post_id):
         """Delete a post by id."""

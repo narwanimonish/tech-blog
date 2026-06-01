@@ -41,6 +41,9 @@ paths:
       operationId: listUsers
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListNextToken"
       responses:
         "200":
           description: Success
@@ -151,6 +154,9 @@ paths:
       operationId: listPosts
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListNextToken"
       responses:
         "200":
           description: Success
@@ -267,6 +273,23 @@ components:
       schema:
         type: string
         format: uuid
+    ListLimit:
+      name: limit
+      in: query
+      required: false
+      description: Page size (default 20, max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ListNextToken:
+      name: nextToken
+      in: query
+      required: false
+      description: Opaque cursor from a previous list response
+      schema:
+        type: string
 
   schemas:
     LoginRequest:
@@ -328,11 +351,19 @@ components:
           description: New role (any change between admin, writer, and reader is allowed)
     UserListResponse:
       type: object
+      required: [items, limit]
       properties:
         items:
           type: array
           items:
             $ref: "#/components/schemas/User"
+        limit:
+          type: integer
+          description: Page size used for this request
+        nextToken:
+          type: string
+          nullable: true
+          description: Pass as nextToken to fetch the next page; null when no more pages
 
     Post:
       type: object
@@ -368,11 +399,19 @@ components:
           type: string
     PostListResponse:
       type: object
+      required: [items, limit]
       properties:
         items:
           type: array
           items:
             $ref: "#/components/schemas/Post"
+        limit:
+          type: integer
+          description: Page size used for this request
+        nextToken:
+          type: string
+          nullable: true
+          description: Pass as nextToken to fetch the next page; null when no more pages
 
     MessageResponse:
       type: object

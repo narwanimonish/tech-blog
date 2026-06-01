@@ -70,3 +70,23 @@ def scan_all(table):
     except Exception as e:
         LOGGER.exception("dynamodb_util.scan_all failed: %s", e)
         raise
+
+
+def scan_page(table, *, limit: int, exclusive_start_key: dict | None = None) -> dict:
+    """
+    Scan one page of items.
+
+    :return: {"items": [...], "last_evaluated_key": dict | None}
+    """
+    try:
+        kwargs: dict = {"Limit": limit}
+        if exclusive_start_key:
+            kwargs["ExclusiveStartKey"] = exclusive_start_key
+        response = table.scan(**kwargs)
+        return {
+            "items": response.get("Items", []),
+            "last_evaluated_key": response.get("LastEvaluatedKey"),
+        }
+    except Exception as e:
+        LOGGER.exception("dynamodb_util.scan_page failed: %s", e)
+        raise

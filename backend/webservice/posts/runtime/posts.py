@@ -13,7 +13,7 @@ import logging
 import os
 
 import boto3
-from common import role_util, simple_api_util, warmup_util
+from common import pagination_util, role_util, simple_api_util, warmup_util
 from core.posts.service import PostsService
 
 LOGGER = logging.getLogger()
@@ -44,8 +44,22 @@ def lambda_handler(event, context):
 
     try:
         if method == "GET" and not post_id:
-            items = SERVICE.list_posts()
-            return simple_api_util.build_response(200, {"items": items})
+            try:
+                limit, start_key = pagination_util.parse_list_params(event)
+            except pagination_util.InvalidCursorError as exc:
+                return simple_api_util.build_error_response(
+                    "BAD_REQUEST",
+                    str(exc),
+                    400,
+                    request_id=request_id,
+                )
+            page = SERVICE.list_posts(limit=limit, start_key=start_key)
+            body = pagination_util.build_list_response(
+                page["items"],
+                limit=limit,
+                last_evaluated_key=page.get("last_evaluated_key"),
+            )
+            return simple_api_util.build_response(200, body)
 
         if method == "POST" and not post_id:
             body = event.get("body")

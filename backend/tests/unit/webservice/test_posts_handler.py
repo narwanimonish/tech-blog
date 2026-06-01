@@ -29,15 +29,33 @@ def mock_service():
 
 
 def test_get_posts_list_returns_200_and_items(mock_context, mock_service):
-    mock_service.list_posts.return_value = [{"postId": "p1", "title": "Hi", "body": "World"}]
+    mock_service.list_posts.return_value = {
+        "items": [{"postId": "p1", "title": "Hi", "body": "World"}],
+        "last_evaluated_key": None,
+    }
     event = api_event("GET", "/posts")
     with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
-    assert "items" in body
     assert body["items"][0]["postId"] == "p1"
+    assert body["limit"] == 20
+    assert body["nextToken"] is None
+    mock_service.list_posts.assert_called_once_with(limit=20, start_key=None)
+
+
+def test_get_posts_list_honors_limit_and_next_token(mock_context, mock_service):
+    token = "abc"
+    mock_service.list_posts.return_value = {"items": [], "last_evaluated_key": {"postId": "p9"}}
+    event = api_event("GET", "/posts", query_params={"limit": "5", "nextToken": token})
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch("runtime.posts.pagination_util.decode_cursor", return_value={"postId": "p0"}) as decode:
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 200
+    decode.assert_called_once_with(token)
+    mock_service.list_posts.assert_called_once_with(limit=5, start_key={"postId": "p0"})
 
 
 def test_get_post_by_id_returns_200_when_found(mock_context, mock_service):

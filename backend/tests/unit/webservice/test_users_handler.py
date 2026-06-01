@@ -29,16 +29,20 @@ def mock_service():
 
 
 def test_get_users_list_returns_200_and_items(mock_context, mock_service):
-    mock_service.list_users.return_value = [{"userId": "u1", "email": "a@b.com"}]
+    mock_service.list_users.return_value = {
+        "items": [{"userId": "u1", "email": "a@b.com"}],
+        "last_evaluated_key": None,
+    }
     event = api_event("GET", "/users")
     with patch.object(users_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.users.SERVICE", mock_service):
             resp = users_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
-    assert "items" in body
     assert len(body["items"]) == 1
     assert body["items"][0]["userId"] == "u1"
+    assert body["limit"] == 20
+    mock_service.list_users.assert_called_once_with(limit=20, start_key=None)
 
 
 def test_get_user_by_id_returns_200_when_found(mock_context, mock_service):

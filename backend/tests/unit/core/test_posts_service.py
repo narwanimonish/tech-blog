@@ -80,7 +80,12 @@ def test_delete_post_calls_delete_item(mock_table):
 def test_list_posts_returns_scan_result(mock_table):
     mock_table.scan.return_value = {
         "Items": [{"postId": "p1"}],
-        "LastEvaluatedKey": None,
+        "LastEvaluatedKey": {"postId": "p1"},
     }
     svc = PostsService(mock_table)
-    assert svc.list_posts() == [{"postId": "p1"}]
+    page = svc.list_posts(limit=10)
+    assert page == {
+        "items": [{"postId": "p1"}],
+        "last_evaluated_key": {"postId": "p1"},
+    }
+    mock_table.scan.assert_called_once_with(Limit=10)

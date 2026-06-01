@@ -16,6 +16,7 @@ def api_event(
     path_params: dict | None = None,
     body: dict | str | None = None,
     authorizer: dict | None = None,
+    query_params: dict | None = None,
 ) -> dict:
     """Build an API Gateway proxy event for handler tests."""
     return {
@@ -26,5 +27,6 @@ def api_event(
             "path": path,
         },
         "pathParameters": path_params or {},
+        "queryStringParameters": query_params,
         "body": json.dumps(body) if body is not None and isinstance(body, dict) else body,
     }

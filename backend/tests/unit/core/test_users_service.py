@@ -25,15 +25,18 @@ def test_get_user_returns_none_when_missing(mock_table):
     assert result is None
 
 
-def test_list_users_returns_all_items(mock_table):
+def test_list_users_returns_page(mock_table):
     mock_table.scan.return_value = {
         "Items": [{"userId": "u1"}, {"userId": "u2"}],
-        "LastEvaluatedKey": None,
+        "LastEvaluatedKey": {"userId": "u2"},
     }
     svc = UsersService(mock_table)
-    result = svc.list_users()
-    assert result == [{"userId": "u1"}, {"userId": "u2"}]
-    mock_table.scan.assert_called_once()
+    page = svc.list_users(limit=2, start_key={"userId": "u0"})
+    assert page == {
+        "items": [{"userId": "u1"}, {"userId": "u2"}],
+        "last_evaluated_key": {"userId": "u2"},
+    }
+    mock_table.scan.assert_called_once_with(Limit=2, ExclusiveStartKey={"userId": "u0"})
 
 
 def test_update_user_merges_into_existing_item(mock_table):
