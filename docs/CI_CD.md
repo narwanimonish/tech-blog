@@ -6,10 +6,10 @@ Workflow: [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)
 
 | Trigger | Lint + test | CDK synth (dev & prod) | Deploy dev | Deploy prod |
 |---------|-------------|-------------------------|------------|-------------|
-| Push (any branch) | Yes | Yes | Manual only | Yes (`APP_ENV=dev`) |
+| Push (any branch) | Yes | Yes | Manual only | Yes (`APP_ENV=dev`) → Postman smoke + perf |
 | Pull request | Yes | Yes | No | No |
-| Manual **dev** | Yes | Yes | Yes | No |
-| Manual **prod** | Yes | Yes | No | Yes (`APP_ENV=dev`) |
+| Manual **dev** | Yes | Yes | Yes → Postman | No |
+| Manual **prod** | Yes | Yes | No | Yes (`APP_ENV=dev`) → Postman |
 
 ## One-time GitHub setup
 
@@ -21,6 +21,15 @@ Workflow: [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)
    |-------------|---------|-------------|
    | `development` | Auto-deploy from `main`, manual dev | Secret `AWS_ROLE_ARN` → **dev** account/role |
    | `production` | Auto-deploy on every branch push (for now) | Secret `AWS_ROLE_ARN` → **prod** account/role |
+
+   **Postman API tests** (after each deploy): add to **both** environments:
+
+   | Secret | Purpose |
+   |--------|---------|
+   | `POSTMAN_USERNAME` | Cognito user email (reader or writer is fine) |
+   | `POSTMAN_PASSWORD` | That user's password |
+
+   `baseUrl` is resolved from `TechBlogApiStack` `ApiUrl` in the deploy job (no separate secret needed).
 
 3. **OIDC trust** on each IAM role: restrict `sub` to this repo (all branches if prod deploys from feature branches).
 
@@ -39,7 +48,15 @@ Existing CloudFormation stacks (`TechBlogDataStack`, etc.) were created with **`
 
 Until env-suffixed stack names and resource names exist in a **separate prod account**, CI deploy jobs keep **`APP_ENV=dev`**.
 
-After each deploy, the pipeline runs a **smoke test**: it reads the `TechBlogApiStack` `ApiUrl` output and calls `GET /posts` without credentials. A **401 or 403** confirms API Gateway and the authorizer are reachable.
+After each deploy, the pipeline runs:
+
+1. **curl smoke test** — `GET /posts` without credentials (expect **401/403**).
+2. **Postman / Newman** (`scripts/postman-ci.sh pipeline`):
+   - **Smoke** folder — login → list posts → get post
+   - **Performance** folder — 10 iterations by default (read-only)
+   - JSON report uploaded as a workflow artifact (`postman-perf-*`)
+
+Manual workflow dispatch can set **postman_perf_iterations** (`0` = smoke only). For heavier runs, use workflow **Postman performance (manual)**.
 
 ## Manual production deploy
 

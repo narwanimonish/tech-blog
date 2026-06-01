@@ -1,7 +1,7 @@
 # Tech-blog — TaskMaster-style orchestration names (thin wrappers).
 # Run from repository root: cd /path/to/tech-blog
 
-.PHONY: test lint generate build-layer build-layer-cython cdk-synth cdk-drop-layer-import cdk-diagnose-api ui-install ui-build ui-deploy help
+.PHONY: test lint generate build-layer build-layer-cython cdk-synth cdk-drop-layer-import cdk-diagnose-api ui-install ui-build ui-deploy postman-install postman-smoke postman-perf help
 
 PYTHON ?= python3
 PYTEST = PYTHONPATH=backend $(PYTHON) -m pytest backend/tests
@@ -19,6 +19,9 @@ help:
 	@echo "  make cdk-synth   - CDK synth (backend layer build + synth)"
 	@echo "  make cdk-drop-layer-import - deploy Api only; drop SharedLayer cross-stack import"
 	@echo "  make cdk-diagnose-api    - check stack status, export lock, API smoke tests"
+	@echo "  make postman-smoke       - Newman API smoke (needs postman/environments/local.postman_environment.json)"
+	@echo "  make postman-perf        - Newman read-only performance loop (see postman/README.md)"
+	@echo "  make postman-pipeline    - smoke + perf like CI (needs POSTMAN_USERNAME/PASSWORD env vars)"
 
 test:
 	$(PYTEST) -v
@@ -57,3 +60,15 @@ ui-build:
 
 ui-deploy: ui-build
 	bash scripts/deploy-frontend.sh
+
+postman-install:
+	cd postman && npm install
+
+postman-smoke: postman-install
+	bash scripts/postman-run.sh smoke
+
+postman-perf: postman-install
+	bash scripts/postman-run.sh perf
+
+postman-pipeline: postman-install
+	bash scripts/postman-ci.sh pipeline

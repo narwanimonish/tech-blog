@@ -148,6 +148,8 @@ Each Lambda’s asset is only `webservice/<name>/` (just `runtime/`). The layer 
 
 ## Postman API Guide
 
+Import the version-controlled collection from **`postman/collections/tech-blog-api.postman_collection.json`**. For smoke and performance runs from the CLI, see **`postman/README.md`** (`make postman-smoke`, `make postman-perf`).
+
 Use this section to call every API from Postman.
 
 ### Postman environment variables

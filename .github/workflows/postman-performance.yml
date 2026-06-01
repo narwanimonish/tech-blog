@@ -1,0 +1,55 @@
+name: Postman performance (manual)
+
+# Heavy performance runs outside the main deploy pipeline.
+# Default deploy pipeline runs smoke + 10 perf iterations via ci-cd.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: Newman iterations (Performance - Read APIs folder)
+        required: true
+        default: "50"
+        type: string
+      delay_ms:
+        description: Delay between requests (ms)
+        required: true
+        default: "100"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  postman-perf:
+    name: Newman performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Run performance collection
+        env:
+          POSTMAN_USERNAME: ${{ secrets.POSTMAN_USERNAME }}
+          POSTMAN_PASSWORD: ${{ secrets.POSTMAN_PASSWORD }}
+          RESOLVE_API_URL_FROM_AWS: "1"
+          PERF_ITERATIONS: ${{ inputs.iterations }}
+          PERF_DELAY_MS: ${{ inputs.delay_ms }}
+          MAX_RESPONSE_MS: "8000"
+        run: bash scripts/postman-ci.sh perf
+
+      - name: Upload Newman report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-perf-report
+          path: postman/reports/perf-*.json
+          if-no-files-found: ignore

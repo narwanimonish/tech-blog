@@ -19,3 +19,9 @@ backend/layer_bundle/**/*.c
 backend/webservice/authorizer/*
 !backend/webservice/authorizer/runtime/
 !backend/webservice/authorizer/requirements.txt
+
+# Postman local env (credentials) and run reports
+postman/environments/local.postman_environment.json
+postman/reports/*
+!postman/reports/.gitkeep
+postman/node_modules/

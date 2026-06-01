@@ -3,7 +3,11 @@ name: CI/CD Pipeline
 # Flow:
 #   PR / push (any branch): lint + test + cdk synth (dev + prod configs)
 #   Push (any branch):      deploy (APP_ENV=dev — matches existing CloudFormation stacks)
+#                             → Postman smoke + performance (Newman) after deploy
 #   workflow_dispatch:      manual dev or prod deploy (both use APP_ENV=dev for now)
+#
+# Postman in deploy jobs needs GitHub environment secrets:
+#   POSTMAN_USERNAME, POSTMAN_PASSWORD (Cognito test user; reader/writer OK for read-only perf folder)
 #
 # NOTE: APP_ENV=prod cannot deploy into the existing TechBlogDataStack yet — it would try
 # to rename DynamoDB tables (dev → prod) and roll back. Real prod needs env-suffixed stacks
@@ -30,6 +34,11 @@ on:
         options:
           - dev
           - prod
+      postman_perf_iterations:
+        description: Newman performance iterations after deploy (0 = smoke only)
+        required: false
+        default: "10"
+        type: string
 
 concurrency:
   group: ci-cd-${{ github.workflow }}-${{ github.ref }}
@@ -231,6 +240,23 @@ jobs:
             exit 1
           fi
 
+      - name: Postman API smoke & performance
+        env:
+          POSTMAN_USERNAME: ${{ secrets.POSTMAN_USERNAME }}
+          POSTMAN_PASSWORD: ${{ secrets.POSTMAN_PASSWORD }}
+          RESOLVE_API_URL_FROM_AWS: "1"
+          MAX_RESPONSE_MS: "8000"
+          PERF_ITERATIONS: ${{ github.event.inputs.postman_perf_iterations || '10' }}
+        run: bash scripts/postman-ci.sh pipeline
+
+      - name: Upload Postman performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-perf-dev-${{ github.run_id }}
+          path: postman/reports/perf-*.json
+          if-no-files-found: ignore
+
       - name: Smoke test frontend
         run: |
           FRONTEND_URL=$(aws cloudformation describe-stacks \
@@ -346,6 +372,23 @@ jobs:
             echo "Expected 401/403 from protected route, got $HTTP_CODE"
             exit 1
           fi
+
+      - name: Postman API smoke & performance
+        env:
+          POSTMAN_USERNAME: ${{ secrets.POSTMAN_USERNAME }}
+          POSTMAN_PASSWORD: ${{ secrets.POSTMAN_PASSWORD }}
+          RESOLVE_API_URL_FROM_AWS: "1"
+          MAX_RESPONSE_MS: "8000"
+          PERF_ITERATIONS: ${{ github.event.inputs.postman_perf_iterations || '10' }}
+        run: bash scripts/postman-ci.sh pipeline
+
+      - name: Upload Postman performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-perf-prod-${{ github.run_id }}
+          path: postman/reports/perf-*.json
+          if-no-files-found: ignore
 
       - name: Smoke test frontend
         run: |

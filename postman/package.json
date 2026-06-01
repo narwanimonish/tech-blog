@@ -1,0 +1,12 @@
+{
+  "name": "tech-blog-postman",
+  "private": true,
+  "description": "Newman runners for Tech Blog API smoke and performance tests",
+  "scripts": {
+    "smoke": "newman run collections/tech-blog-api.postman_collection.json -e environments/local.postman_environment.json --folder Smoke --reporters cli",
+    "perf": "newman run collections/tech-blog-api.postman_collection.json -e environments/local.postman_environment.json --folder \"Performance - Read APIs\" -n 20 --delay-request 100 --reporters cli,json --reporter-json-export reports/perf-latest.json"
+  },
+  "devDependencies": {
+    "newman": "^6.2.1"
+  }
+}

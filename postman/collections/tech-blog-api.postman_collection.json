@@ -1,0 +1,428 @@
+{
+  "info": {
+    "_postman_id": "tech-blog-api-collection",
+    "name": "Tech Blog API",
+    "description": "REST API for users and posts. Import with `postman/environments/template.postman_environment.json` or copy `local.postman_environment.json.example` to `local.postman_environment.json`.\n\n**Smoke:** folder `Smoke` — one pass, functional checks.\n\n**Performance:** folder `Performance - Read APIs` — read-only loop (login → list posts → get post). Run via Newman (`make postman-perf`) or Postman Performance runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{{baseUrl}}"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken, 'accessToken present').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('accessToken', body.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Public login. Sets `accessToken` in the active environment."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.items).to.be.an('array');",
+                  "if (body.items.length > 0) {",
+                  "    pm.environment.set('userId', body.items[0].userId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.userId).to.eql(pm.environment.get('userId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "List posts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.items).to.be.an('array');",
+                  "pm.expect(body.limit).to.be.a('number');",
+                  "if (body.items.length > 0) {",
+                  "    pm.environment.set('postId', body.items[0].postId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.postId).to.eql(pm.environment.get('postId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "{{postId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.postId).to.be.a('string').and.not.empty;",
+                  "pm.environment.set('postId', body.postId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman test {{$timestamp}}\",\n  \"body\": \"Created by Postman collection\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Smoke",
+      "description": "Single-pass functional smoke test against a deployed API.",
+      "item": [
+        {
+          "name": "01 Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
+                  "pm.environment.set('accessToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "response": []
+        },
+        {
+          "name": "02 List posts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const items = pm.response.json().items;",
+                  "pm.expect(items).to.be.an('array');",
+                  "if (items.length > 0) { pm.environment.set('postId', items[0].postId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "03 Get post",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('postId')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Performance - Read APIs",
+      "description": "Read-only flow for load testing. Safe to repeat — no writes. Asserts response time against `maxResponseMs` (default 3000).",
+      "item": [
+        {
+          "name": "01 Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Login response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});",
+                  "pm.environment.set('accessToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "response": []
+        },
+        {
+          "name": "02 List posts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('List posts response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});",
+                  "const items = pm.response.json().items;",
+                  "if (items.length > 0) { pm.environment.set('postId', items[0].postId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "03 Get post",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('postId')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxMs = parseInt(pm.environment.get('maxResponseMs') || '3000', 10);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Get post response time OK', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxMs);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
