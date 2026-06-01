@@ -108,6 +108,14 @@ def _install_authorizer_dependencies() -> None:
 
 
 def _remove_generated_cython_artifacts(python_dir: Path) -> None:
+    build_dir = python_dir / "build"
+    if build_dir.is_dir():
+        shutil.rmtree(build_dir)
+
+    for egg_info in python_dir.glob("*.egg-info"):
+        if egg_info.is_dir():
+            shutil.rmtree(egg_info)
+
     for pattern in ("*.c", "*.cpp"):
         for path in python_dir.rglob(pattern):
             path.unlink(missing_ok=True)
@@ -175,7 +183,11 @@ def _cythonize_layer_bundle() -> None:
             f"CYTHONIZE=1 requires Linux Python 3.12 or Docker ({LAMBDA_DOCKER_IMAGE}) to build Lambda-compatible extensions."
         )
 
-    compiled = list(PYTHON.rglob("*.so"))
+    compiled = [
+        path
+        for path in PYTHON.rglob("*.so")
+        if path.relative_to(PYTHON).parts and path.relative_to(PYTHON).parts[0] in {"common", "core"}
+    ]
     if not compiled:
         raise SystemExit("Cython build produced no .so files in layer_bundle")
     print(f"  Compiled {len(compiled)} extension(s)")
