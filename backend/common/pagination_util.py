@@ -6,7 +6,7 @@ import base64
 import json
 from decimal import Decimal
 
-DEFAULT_PAGE_SIZE = 20
+DEFAULT_PAGE_SIZE = 5
 MAX_PAGE_SIZE = 100
 
 
