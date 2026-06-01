@@ -10,9 +10,9 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+from common import pagination_util
 
 from backend.tests.helpers import BACKEND_ROOT, api_event
-from common import pagination_util
 
 # Make the users handler importable (runtime.users)
 _USERS_HANDLER_DIR = BACKEND_ROOT / "webservice" / "users"
