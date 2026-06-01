@@ -164,8 +164,7 @@ def _cythonize_layer_bundle() -> None:
         _run_cython_compile_docker(PYTHON)
     else:
         raise SystemExit(
-            "CYTHONIZE=1 requires Linux Python 3.12 or Docker "
-            f"({LAMBDA_DOCKER_IMAGE}) to build Lambda-compatible extensions."
+            f"CYTHONIZE=1 requires Linux Python 3.12 or Docker ({LAMBDA_DOCKER_IMAGE}) to build Lambda-compatible extensions."
         )
 
     compiled = list(PYTHON.rglob("*.so"))
@@ -178,9 +177,7 @@ def _verify_layer_bundle(*, cythonized: bool) -> None:
     for name in FORBIDDEN_LAYER_ROOT:
         path = PYTHON / name
         if path.exists():
-            raise SystemExit(
-                f"layer_bundle must not contain {name!r} (authorizer deps belong in webservice/authorizer/)"
-            )
+            raise SystemExit(f"layer_bundle must not contain {name!r} (authorizer deps belong in webservice/authorizer/)")
 
     for shared_object in PYTHON.rglob("*.so"):
         rel_parts = shared_object.relative_to(PYTHON).parts
