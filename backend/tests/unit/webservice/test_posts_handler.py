@@ -13,6 +13,8 @@ import pytest
 
 from backend.tests.helpers import BACKEND_ROOT, api_event
 
+from common import pagination_util
+
 # Make the posts handler importable (runtime.posts)
 _POSTS_HANDLER_DIR = BACKEND_ROOT / "webservice" / "posts"
 if str(_POSTS_HANDLER_DIR) not in sys.path:
@@ -40,9 +42,12 @@ def test_get_posts_list_returns_200_and_items(mock_context, mock_service):
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert body["items"][0]["postId"] == "p1"
-    assert body["limit"] == 20
+    assert body["limit"] == pagination_util.DEFAULT_PAGE_SIZE
     assert body["nextToken"] is None
-    mock_service.list_posts.assert_called_once_with(limit=20, start_key=None)
+    mock_service.list_posts.assert_called_once_with(
+        limit=pagination_util.DEFAULT_PAGE_SIZE,
+        start_key=None,
+    )
 
 
 def test_get_posts_list_honors_limit_and_next_token(mock_context, mock_service):

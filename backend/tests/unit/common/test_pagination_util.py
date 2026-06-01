@@ -32,12 +32,20 @@ def test_parse_page_size_defaults_and_bounds():
 
 def test_build_list_response_includes_next_token_when_more_pages():
     key = {"userId": "u2"}
-    body = pagination_util.build_list_response([{"userId": "u1"}], limit=20, last_evaluated_key=key)
+    body = pagination_util.build_list_response(
+        [{"userId": "u1"}],
+        limit=pagination_util.DEFAULT_PAGE_SIZE,
+        last_evaluated_key=key,
+    )
     assert body["items"] == [{"userId": "u1"}]
-    assert body["limit"] == 20
+    assert body["limit"] == pagination_util.DEFAULT_PAGE_SIZE
     assert body["nextToken"] == pagination_util.encode_cursor(key)
 
 
 def test_build_list_response_null_next_token_on_last_page():
-    body = pagination_util.build_list_response([], limit=20, last_evaluated_key=None)
+    body = pagination_util.build_list_response(
+        [],
+        limit=pagination_util.DEFAULT_PAGE_SIZE,
+        last_evaluated_key=None,
+    )
     assert body["nextToken"] is None

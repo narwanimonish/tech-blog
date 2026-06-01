@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from backend.tests.helpers import BACKEND_ROOT, api_event
+from common import pagination_util
 
 # Make the users handler importable (runtime.users)
 _USERS_HANDLER_DIR = BACKEND_ROOT / "webservice" / "users"
@@ -41,8 +42,11 @@ def test_get_users_list_returns_200_and_items(mock_context, mock_service):
     body = json.loads(resp["body"])
     assert len(body["items"]) == 1
     assert body["items"][0]["userId"] == "u1"
-    assert body["limit"] == 20
-    mock_service.list_users.assert_called_once_with(limit=20, start_key=None)
+    assert body["limit"] == pagination_util.DEFAULT_PAGE_SIZE
+    mock_service.list_users.assert_called_once_with(
+        limit=pagination_util.DEFAULT_PAGE_SIZE,
+        start_key=None,
+    )
 
 
 def test_get_user_by_id_returns_200_when_found(mock_context, mock_service):

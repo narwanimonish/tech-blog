@@ -6,7 +6,7 @@ Expects table with partition key userId.
 import logging
 
 from botocore.exceptions import ClientError
-from common import dynamodb_util
+from common import dynamodb_util, pagination_util
 from common.errors import AppError
 
 LOGGER = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class UsersService:
         LOGGER.info("Updated role for user %s to %s", user_id, normalized)
         return merged
 
-    def list_users(self, *, limit: int = 20, start_key: dict | None = None) -> dict:
+    def list_users(self, *, limit: int = pagination_util.DEFAULT_PAGE_SIZE, start_key: dict | None = None) -> dict:
         """List one page of users. Returns items and optional DynamoDB cursor."""
         return dynamodb_util.scan_page(self._table, limit=limit, exclusive_start_key=start_key)
 

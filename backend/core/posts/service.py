@@ -7,7 +7,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from common import dynamodb_util
+from common import dynamodb_util, pagination_util
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class PostsService:
         LOGGER.info("Created post %s", data["postId"])
         return data
 
-    def list_posts(self, *, limit: int = 20, start_key: dict | None = None) -> dict:
+    def list_posts(self, *, limit: int = pagination_util.DEFAULT_PAGE_SIZE, start_key: dict | None = None) -> dict:
         """List one page of posts. Returns items and optional DynamoDB cursor."""
         return dynamodb_util.scan_page(self._table, limit=limit, exclusive_start_key=start_key)
 
