@@ -211,3 +211,13 @@ button:disabled {
 .detail-list dd {
   margin: 0;
 }
+
+.pagination {
+  justify-content: center;
+  margin-top: 4px;
+}
+
+button.pagination-active {
+  background: #243b53;
+  outline: 2px solid #829ab1;
+}

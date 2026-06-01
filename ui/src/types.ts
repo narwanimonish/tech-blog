@@ -23,6 +23,16 @@ export interface LoginResponse {
   tokenType?: string;
 }
 
+export interface PaginatedList<T> {
+  items: T[];
+  limit: number;
+  nextToken?: string;
+}
+
+export interface ListOptions {
+  nextToken?: string;
+}
+
 export interface ApiError {
   errorCode?: string;
   message: string;

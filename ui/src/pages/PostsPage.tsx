@@ -1,29 +1,56 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { formatApiError, createPost, deletePost, listPosts } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { PaginationBar } from "../components/PaginationBar";
 import type { Post } from "../types";
 import { formatDate } from "../utils/format";
 
 export function PostsPage() {
   const { token, canManagePosts } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [pageTokens, setPageTokens] = useState<(string | undefined)[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  async function loadPosts() {
-    if (!token) {
-      return;
-    }
-    setPosts(await listPosts(token));
-  }
+  const loadPage = useCallback(
+    async (targetPage: number) => {
+      if (!token) {
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const nextToken = targetPage > 1 ? pageTokens[targetPage - 2] : undefined;
+        const data = await listPosts(token, { nextToken });
+        setPosts(data.items);
+        setPage(targetPage);
+        if (data.nextToken) {
+          setPageTokens((previous) => {
+            const next = [...previous];
+            next[targetPage - 1] = data.nextToken;
+            return next;
+          });
+          setPageCount((previous) => Math.max(previous, targetPage + 1));
+        } else {
+          setPageCount((previous) => Math.max(previous, targetPage));
+        }
+      } catch (err: unknown) {
+        setError(formatApiError(err, "Failed to load posts"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token, pageTokens],
+  );
 
   useEffect(() => {
-    loadPosts().catch((err: unknown) => {
-      setError(formatApiError(err, "Failed to load posts"));
-    });
+    void loadPage(1);
   }, [token]);
 
   if (!token) {
@@ -41,7 +68,7 @@ export function PostsPage() {
       await createPost(token, { title: title.trim(), body: body.trim() });
       setTitle("");
       setBody("");
-      await loadPosts();
+      await loadPage(1);
     } catch (err) {
       setError(formatApiError(err, "Failed to create post"));
     } finally {
@@ -57,7 +84,7 @@ export function PostsPage() {
     setError(null);
     try {
       await deletePost(token, postId);
-      await loadPosts();
+      await loadPage(page);
     } catch (err) {
       setError(formatApiError(err, "Failed to delete post"));
     } finally {
@@ -71,7 +98,8 @@ export function PostsPage() {
 
       <div className="card stack">
         <h2 style={{ margin: 0 }}>Posts</h2>
-        {posts.length === 0 ? <p className="muted">No posts yet.</p> : null}
+        {loading && posts.length === 0 ? <p className="muted">Loading posts…</p> : null}
+        {!loading && posts.length === 0 ? <p className="muted">No posts yet.</p> : null}
         {posts.map((post) => (
           <div key={post.postId} className="list-item stack">
             <div className="row" style={{ justifyContent: "space-between" }}>
@@ -91,7 +119,7 @@ export function PostsPage() {
                     type="button"
                     className="danger"
                     onClick={() => void handleDelete(post.postId)}
-                    disabled={busy}
+                    disabled={busy || loading}
                   >
                     Delete
                   </button>
@@ -100,6 +128,12 @@ export function PostsPage() {
             </div>
           </div>
         ))}
+        <PaginationBar
+          page={page}
+          pageCount={pageCount}
+          loading={loading}
+          onPageChange={(targetPage) => void loadPage(targetPage)}
+        />
       </div>
 
       {canManagePosts ? (

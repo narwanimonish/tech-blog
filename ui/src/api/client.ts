@@ -1,7 +1,9 @@
 import { getApiBaseUrl } from "../config";
 import type {
   ApiError,
+  ListOptions,
   LoginResponse,
+  PaginatedList,
   Post,
   Role,
   User,
@@ -114,9 +116,20 @@ export async function login(username: string, password: string): Promise<LoginRe
   });
 }
 
-export async function listUsers(token: string): Promise<User[]> {
-  const data = await request<{ items: User[] }>("/users", { method: "GET" }, token);
-  return data.items;
+function listQuery(options: ListOptions = {}): string {
+  const params = new URLSearchParams();
+  if (options.nextToken) {
+    params.set("nextToken", options.nextToken);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function listUsers(
+  token: string,
+  options: ListOptions = {},
+): Promise<PaginatedList<User>> {
+  return request<PaginatedList<User>>(`/users${listQuery(options)}`, { method: "GET" }, token);
 }
 
 export async function getUser(token: string, userId: string): Promise<User> {
@@ -151,9 +164,11 @@ export async function updateUserRole(
   );
 }
 
-export async function listPosts(token: string): Promise<Post[]> {
-  const data = await request<{ items: Post[] }>("/posts", { method: "GET" }, token);
-  return data.items;
+export async function listPosts(
+  token: string,
+  options: ListOptions = {},
+): Promise<PaginatedList<Post>> {
+  return request<PaginatedList<Post>>(`/posts${listQuery(options)}`, { method: "GET" }, token);
 }
 
 export async function getPost(token: string, postId: string): Promise<Post> {
