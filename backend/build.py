@@ -41,6 +41,14 @@ PYTHON = LAYER_BUNDLE / "python"
 LAMBDA_PYTHON_VERSION = "3.12"
 LAMBDA_PLATFORM = "manylinux2014_x86_64"
 LAMBDA_DOCKER_IMAGE = "public.ecr.aws/lambda/python:3.12"
+DOCKER_CYTHON_SETUP = (
+    "if command -v microdnf >/dev/null; then microdnf install -y gcc; "
+    "elif command -v dnf >/dev/null; then dnf install -y gcc; "
+    "elif command -v yum >/dev/null; then yum install -y gcc; "
+    "else echo 'Cannot install gcc: no supported package manager' >&2; exit 1; fi && "
+    "pip install -q 'cython>=3.0.12,<4' 'setuptools>=69.0.0' 'PyJWT[crypto]>=2.8.0,<3' && "
+    "cd /var/task/layer/python && python /var/task/setup_layer_cython.py"
+)
 FORBIDDEN_LAYER_ROOT = {"jwt", "cryptography", "cffi", "pycparser", "_cffi_backend"}
 
 
@@ -143,8 +151,7 @@ def _run_cython_compile_docker(python_dir: Path) -> None:
             f"{setup_script}:/var/task/setup_layer_cython.py:ro",
             LAMBDA_DOCKER_IMAGE,
             "-lc",
-            "pip install -q 'cython>=3.0.12,<4' 'setuptools>=69.0.0' 'PyJWT[crypto]>=2.8.0,<3' && "
-            "cd /var/task/layer/python && python /var/task/setup_layer_cython.py",
+            DOCKER_CYTHON_SETUP,
         ],
         check=True,
     )
@@ -158,7 +165,7 @@ def _cythonize_layer_bundle() -> None:
     if not SETUP_CYTHON.is_file():
         raise SystemExit(f"Missing {SETUP_CYTHON}")
 
-    print("Cythonizing layer_bundle/python/{{common,core}} for Lambda...")
+    print("Cythonizing layer_bundle/python/{common,core} for Lambda...")
     if _can_compile_inplace():
         _run_cython_compile(PYTHON)
     elif _docker_available():
