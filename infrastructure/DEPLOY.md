@@ -105,18 +105,15 @@ bash scripts/cdk-deploy-ordered.sh
 
 This handles the posts-table GSI two-phase migration, then deploys Auth → Lambda → Api → Warmer/Frontend, and runs the posts GSI backfill.
 
-### Zip → container image migration (custom function names)
+### Container images (stable function names)
 
-App Lambdas (users, posts, auth login, authorizer) deploy as **container images** with `-img` physical names via `lambda_function_name()`. Keep the **same CDK construct ids** (`AuthLogin`, `UsersApi`, …) so cross-stack exports used by `TechBlogApiStack` and `TechBlogWarmerStack` update in place.
+App Lambdas (users, posts, auth login, authorizer) deploy as **container images** using their **original names** (e.g. `tech-blog-users-api`). After the first zip→image migration, keep the same physical name and CDK construct ids (`AuthLogin`, `UsersApi`, …) so cross-stack exports used by `TechBlogApiStack` and `TechBlogWarmerStack` update in place.
 
-**Cognito trigger Lambdas** (`TechBlogAuthStack`) stay **zip-packaged** — they only use boto3 and never needed the shared layer. Do not migrate them to images; that avoids zip→image replace errors and Early Validation name conflicts.
+**Do not rename** functions to a `-img` suffix — that triggers CloudFormation replacement, breaks cross-stack exports, and can roll back with Lambdas deleted.
 
-If a previous failed deploy left orphaned `*-img` Cognito functions in the account, delete them before redeploying Auth:
+**Cognito trigger Lambdas** (`TechBlogAuthStack`) stay **zip-packaged** (boto3-only).
 
-```bash
-aws lambda delete-function --function-name tech-blog-cognito-post-confirmation-img 2>/dev/null || true
-aws lambda delete-function --function-name tech-blog-cognito-post-authentication-img 2>/dev/null || true
-```
+If a previous failed deploy left orphaned `*-img` functions, `scripts/cdk-deploy-ordered.sh` deletes them before Auth/Lambda deploy.
 
 ### Legacy: SharedLayer export errors
 
@@ -239,7 +236,7 @@ CloudFormation fails early validation when it tries to **create** a log group th
 
 ```bash
 # Replace names if your APP_NAME differs (default app name is often tech-blog)
-aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-confirmation-img"
+aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-confirmation"
 aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-authentication"
 ```
 

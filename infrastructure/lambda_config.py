@@ -8,10 +8,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-# Container-image Lambdas use a distinct physical name from legacy zip functions.
-# CloudFormation cannot replace a custom-named Lambda (zip → image) without renaming.
-_LAMBDA_NAME_SUFFIX = "-img"
-
 # Repo root: from infrastructure/ go up one level
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_PATH = _REPO_ROOT / "backend" / "config.json"
@@ -21,11 +17,6 @@ _DEFAULTS = {
     "memory_size": 256,
     "reserved_concurrency": None,  # None = no limit
 }
-
-
-def lambda_function_name(app_name: str, slug: str) -> str:
-    """Physical Lambda function name for container-image functions."""
-    return f"{app_name}-{slug}{_LAMBDA_NAME_SUFFIX}"
 
 
 def load_lambda_config() -> dict:

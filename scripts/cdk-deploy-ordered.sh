@@ -46,6 +46,14 @@ done
 "${CDK[@]}" TechBlogAuthStack
 
 echo "=== TechBlogLambdaStack (container images) ==="
+# Remove orphaned *-img functions from failed rename/replace attempts.
+for fn in \
+  tech-blog-users-api-img \
+  tech-blog-posts-api-img \
+  tech-blog-auth-login-img \
+  tech-blog-api-authorizer-img; do
+  aws lambda delete-function --function-name "$fn" 2>/dev/null || true
+done
 "${CDK[@]}" TechBlogLambdaStack
 wait_for_stack TechBlogLambdaStack
 
