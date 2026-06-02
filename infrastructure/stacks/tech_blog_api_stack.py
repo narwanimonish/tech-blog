@@ -12,7 +12,7 @@ from aws_cdk import CfnOutput, Duration, Stack, aws_apigateway as apigw, aws_iam
 from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs import Construct
-from lambda_config import get_lambda_settings
+from lambda_config import get_lambda_settings, lambda_function_name
 from services.lambda_function import LambdaFunction
 from services.rest_api_gateway import RestApiGateway
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
@@ -41,8 +41,8 @@ class TechBlogApiStack(Stack):
         # Authorizer Lambda in this stack (avoids circular dependency with Lambda stack)
         authorizer_lambda = LambdaFunction(
             self,
-            "Authorizer",
-            function_name=f"{app_name}-api-authorizer",
+            "AuthorizerImg",
+            function_name=lambda_function_name(app_name, "api-authorizer"),
             service_name="authorizer",
             handler="runtime.authorizer.lambda_handler",
             install_authorizer_deps=True,

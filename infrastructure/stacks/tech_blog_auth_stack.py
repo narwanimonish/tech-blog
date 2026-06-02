@@ -14,7 +14,7 @@ from aws_cdk import CfnOutput, Stack, aws_cognito as cognito
 from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs import Construct
-from lambda_config import get_lambda_settings
+from lambda_config import get_lambda_settings, lambda_function_name
 from services.cognito_auth import CognitoAuth
 from services.lambda_function import LambdaFunction
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -42,11 +42,11 @@ class TechBlogAuthStack(Stack):
         post_conf_cfg = get_lambda_settings("cognito_post_confirmation")
         post_auth_cfg = get_lambda_settings("cognito_post_authentication")
 
-        # Post-confirmation Lambda: write new Cognito user to DynamoDB users table (no layer needed)
+        # Post-confirmation Lambda (container image; new construct id avoids zip→image replace deadlock)
         cognito_post_confirmation = LambdaFunction(
             self,
-            "CognitoPostConfirmation",
-            function_name=f"{app_name}-cognito-post-confirmation",
+            "CognitoPostConfirmationImg",
+            function_name=lambda_function_name(app_name, "cognito-post-confirmation"),
             service_name="cognito_post_confirmation",
             handler="runtime.cognito_post_confirmation.lambda_handler",
             timeout_seconds=post_conf_cfg["timeout_seconds"],
@@ -64,8 +64,8 @@ class TechBlogAuthStack(Stack):
         # Cognito does not provide JWT/refresh tokens to trigger events.
         cognito_post_authentication = LambdaFunction(
             self,
-            "CognitoPostAuthentication",
-            function_name=f"{app_name}-cognito-post-authentication",
+            "CognitoPostAuthenticationImg",
+            function_name=lambda_function_name(app_name, "cognito-post-authentication"),
             service_name="cognito_post_authentication",
             handler="runtime.cognito_post_authentication.lambda_handler",
             timeout_seconds=post_auth_cfg["timeout_seconds"],

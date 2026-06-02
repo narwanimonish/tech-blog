@@ -48,7 +48,7 @@ fi
 
 echo
 echo "=== Recent authorizer failures (CloudWatch) ==="
-LOG_GROUP="/aws/lambda/tech-blog-api-authorizer"
+LOG_GROUP="/aws/lambda/tech-blog-api-authorizer-img"
 if aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q authorizer; then
   aws logs filter-log-events \
     --log-group-name "$LOG_GROUP" \

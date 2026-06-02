@@ -12,7 +12,7 @@ from aws_cdk import Stack, aws_iam as iam
 from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs import Construct
-from lambda_config import get_lambda_settings
+from lambda_config import get_lambda_settings, lambda_function_name
 from services.dynamodb_table import DynamoDBTable
 from services.lambda_function import LambdaFunction
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
@@ -53,8 +53,8 @@ class TechBlogLambdaStack(Stack):
         # Users Lambda – single handler for all users routes (GET /users, GET/PUT/DELETE /users/{userId})
         self.users_api = LambdaFunction(
             self,
-            "UsersApi",
-            function_name=f"{app_name}-users-api",
+            "UsersApiImg",
+            function_name=lambda_function_name(app_name, "users-api"),
             service_name="users",
             handler="runtime.users.lambda_handler",
             environment=users_env,
@@ -66,8 +66,8 @@ class TechBlogLambdaStack(Stack):
         # Posts Lambda – single handler for all posts routes (GET/POST /posts, GET/PUT/DELETE /posts/{postId})
         self.posts_api = LambdaFunction(
             self,
-            "PostsApi",
-            function_name=f"{app_name}-posts-api",
+            "PostsApiImg",
+            function_name=lambda_function_name(app_name, "posts-api"),
             service_name="posts",
             handler="runtime.posts.lambda_handler",
             environment=posts_env,
@@ -79,8 +79,8 @@ class TechBlogLambdaStack(Stack):
         # Auth login (public)
         self.auth_login = LambdaFunction(
             self,
-            "AuthLogin",
-            function_name=f"{app_name}-auth-login",
+            "AuthLoginImg",
+            function_name=lambda_function_name(app_name, "auth-login"),
             service_name="cognito_login",
             handler="runtime.cognito_login.lambda_handler",
             timeout_seconds=auth_cfg["timeout_seconds"],

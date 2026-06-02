@@ -105,6 +105,19 @@ bash scripts/cdk-deploy-ordered.sh
 
 This handles the posts-table GSI two-phase migration, then deploys Auth → Lambda → Api → Warmer/Frontend, and runs the posts GSI backfill.
 
+### Zip → container image migration (custom function names)
+
+Switching from zip Lambdas to container images **replaces** each function. If `function_name` is set explicitly, CloudFormation cannot replace in place — deploy fails with *"Rename … and update the stack again"*.
+
+**Fix in code (both required):**
+
+1. New physical names with `-img` suffix via `lambda_function_name()` (e.g. `tech-blog-users-api-img`).
+2. New CDK construct ids (`UsersApiImg`, `CognitoPostConfirmationImg`, …) so CloudFormation **deletes** the old zip Lambdas and **creates** new image Lambdas instead of attempting an in-place replace.
+
+Push these changes, then redeploy. The stack may be in `UPDATE_ROLLBACK_COMPLETE` — that is safe to update again.
+
+After deploy, delete orphaned zip log groups if desired (e.g. `/aws/lambda/tech-blog-cognito-post-confirmation`).
+
 ### Legacy: SharedLayer export errors
 
 If upgrading from an older deployment that used Lambda **layers**, you may see CloudFormation export errors for `SharedLayer`. Run `bash scripts/drop-shared-layer-import.sh` once, then redeploy. New deployments use container images only.
@@ -226,7 +239,7 @@ CloudFormation fails early validation when it tries to **create** a log group th
 
 ```bash
 # Replace names if your APP_NAME differs (default app name is often tech-blog)
-aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-confirmation"
+aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-confirmation-img"
 aws logs delete-log-group --log-group-name "/aws/lambda/tech-blog-cognito-post-authentication"
 ```
 
