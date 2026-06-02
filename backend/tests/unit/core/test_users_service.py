@@ -100,9 +100,7 @@ def test_upsert_user_creates_second_user_as_reader(mock_table):
 
 
 def test_upsert_user_preserves_role_on_existing(mock_table):
-    mock_table.get_item.return_value = {
-        "Item": {"userId": "u1", "email": "a@b.com", "role": "writer", "name": "Alice"}
-    }
+    mock_table.get_item.return_value = {"Item": {"userId": "u1", "email": "a@b.com", "role": "writer", "name": "Alice"}}
     svc = UsersService(mock_table)
     result = svc.upsert_user("u1", {"email": "new@b.com"})
     assert result["role"] == "writer"

@@ -60,7 +60,9 @@ class LambdaFunction(Construct):
                         file="Dockerfile.lambda",
                         build_args={
                             "SERVICE": service_name,
-                            "INSTALL_AUTHORIZER_DEPS": "true" if install_authorizer_deps else "false",
+                            "INSTALL_AUTHORIZER_DEPS": "true"
+                            if install_authorizer_deps
+                            else "false",
                         },
                         cmd=[handler],
                         platform=ecr_assets.Platform.LINUX_AMD64,
