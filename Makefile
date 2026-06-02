@@ -1,7 +1,7 @@
 # Tech-blog — TaskMaster-style orchestration names (thin wrappers).
 # Run from repository root: cd /path/to/tech-blog
 
-.PHONY: test lint generate build-layer build-layer-cython cdk-synth cdk-drop-layer-import cdk-diagnose-api ui-install ui-build ui-deploy postman-install postman-smoke postman-perf help
+.PHONY: test lint generate build-layer build-layer-cython cdk-synth cdk-drop-layer-import cdk-diagnose-api ui-install ui-build ui-deploy postman-install postman-smoke postman-perf backfill-posts-gsi help
 
 PYTHON ?= python3
 PYTEST = PYTHONPATH=backend $(PYTHON) -m pytest backend/tests
@@ -19,6 +19,7 @@ help:
 	@echo "  make cdk-synth   - CDK synth (backend layer build + synth)"
 	@echo "  make cdk-drop-layer-import - deploy Api only; drop SharedLayer cross-stack import"
 	@echo "  make cdk-diagnose-api    - check stack status, export lock, API smoke tests"
+	@echo "  make backfill-posts-gsi  - set listPk=POST on existing posts (needs AWS creds)"
 	@echo "  make postman-smoke       - Newman API smoke (needs postman/environments/local.postman_environment.json)"
 	@echo "  make postman-perf        - Newman read-only performance loop (see postman/README.md)"
 	@echo "  make postman-pipeline    - smoke + perf like CI (needs POSTMAN_USERNAME/PASSWORD env vars)"
@@ -51,6 +52,9 @@ cdk-drop-layer-import:
 
 cdk-diagnose-api:
 	bash scripts/diagnose-api.sh
+
+backfill-posts-gsi:
+	bash scripts/backfill-posts-gsi.sh
 
 ui-install:
 	cd ui && npm install

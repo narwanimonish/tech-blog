@@ -95,7 +95,7 @@ def test_list_posts_queries_gsi_newest_first(mock_table):
     }
     mock_table.query.assert_called_once()
     kwargs = mock_table.query.call_args[1]
-    assert kwargs["IndexName"] == "PostsByCreationTime"
+    assert kwargs["IndexName"] == "PostsListByCreationTime"
     assert kwargs["Limit"] == 10
     assert kwargs["ScanIndexForward"] is False
     assert kwargs["ExclusiveStartKey"] == {"postId": "p0", "listPk": "POST"}

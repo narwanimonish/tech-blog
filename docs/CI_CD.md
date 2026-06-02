@@ -57,6 +57,8 @@ After each deploy, the pipeline runs:
    - **Performance - All APIs** — same flow × 10 iterations (default); creates/deletes a temp post each loop
    - JSON report uploaded as artifact (`postman-perf-*`)
 
+`scripts/cdk-deploy-ordered.sh` (run during deploy) also runs **`scripts/backfill-posts-gsi.sh`** after CDK finishes — idempotent `listPk=POST` backfill so existing posts appear in `GET /posts`.
+
 Manual workflow dispatch can set **postman_perf_iterations** (`0` = smoke only). For heavier runs, use workflow **Postman performance (manual)**.
 
 ## Manual production deploy

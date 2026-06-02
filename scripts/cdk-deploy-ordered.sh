@@ -98,18 +98,20 @@ if ! aws cloudformation describe-stacks --stack-name TechBlogLambdaStack >/dev/n
   "${CDK[@]}" TechBlogLambdaStack
   echo "=== Greenfield: TechBlogApiStack, TechBlogWarmerStack, TechBlogFrontendStack ==="
   "${CDK_STACK[@]}" TechBlogApiStack TechBlogWarmerStack TechBlogFrontendStack
-  exit 0
+else
+  print_shared_layer_export_status
+  ensure_no_shared_layer_imports
+
+  echo "=== TechBlogLambdaStack (layer + API handlers, --exclusively) ==="
+  "${CDK_STACK[@]}" TechBlogLambdaStack
+  wait_for_stack TechBlogLambdaStack
+
+  echo "=== TechBlogWarmerStack, TechBlogFrontendStack (--exclusively) ==="
+  "${CDK_STACK[@]}" TechBlogWarmerStack TechBlogFrontendStack
+
+  echo "=== TechBlogApiStack (final sync, --exclusively) ==="
+  "${CDK_STACK[@]}" TechBlogApiStack
 fi
 
-print_shared_layer_export_status
-ensure_no_shared_layer_imports
-
-echo "=== TechBlogLambdaStack (layer + API handlers, --exclusively) ==="
-"${CDK_STACK[@]}" TechBlogLambdaStack
-wait_for_stack TechBlogLambdaStack
-
-echo "=== TechBlogWarmerStack, TechBlogFrontendStack (--exclusively) ==="
-"${CDK_STACK[@]}" TechBlogWarmerStack TechBlogFrontendStack
-
-echo "=== TechBlogApiStack (final sync, --exclusively) ==="
-"${CDK_STACK[@]}" TechBlogApiStack
+echo "=== Backfill posts listPk (PostsListByCreationTime GSI) ==="
+bash "${ROOT}/scripts/backfill-posts-gsi.sh"

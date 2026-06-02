@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-One-time backfill: add listPk=POST to existing posts so they appear in PostsByCreationTime GSI.
+One-time backfill: add listPk=POST to existing posts so they appear in PostsListByCreationTime GSI.
 
 Usage (from repo root, AWS creds + table name):
   POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py

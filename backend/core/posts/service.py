@@ -1,6 +1,6 @@
 """
 Posts domain service: CRUD for posts. Uses common.dynamodb_util.
-Expects table with partition key postId and GSI PostsByCreationTime (listPk, creation_time).
+Expects table with partition key postId and GSI PostsListByCreationTime (listPk, creation_time).
 """
 
 import logging
@@ -58,7 +58,7 @@ class PostsService:
         return data
 
     def list_posts(self, *, limit: int = pagination_util.DEFAULT_PAGE_SIZE, start_key: dict | None = None) -> dict:
-        """List one page of posts (newest first) via GSI PostsByCreationTime."""
+        """List one page of posts (newest first) via GSI PostsListByCreationTime."""
         return dynamodb_util.query_page(
             self._table,
             index_name=POSTS_BY_CREATION_TIME_INDEX,

@@ -151,7 +151,7 @@ The **live** API stack in AWS still imports the old Lambda exports. You must upd
 
 ## 4. Stack outputs
 
-- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack). Posts table includes GSI **`PostsByCreationTime`** (`listPk`, `creation_time`) for scalable list queries.
+- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack). Posts table includes GSI **`PostsListByCreationTime`** (`listPk`, `creation_time`) for scalable list queries.
 
 ### Posts GSI backfill (existing data)
 
@@ -163,6 +163,14 @@ POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py
 ```
 
 Replace the table name with your `PostsTableName` stack output.
+
+This runs automatically at the end of **`bash scripts/cdk-deploy-ordered.sh`** (including CI deploy jobs). Manual run:
+
+```bash
+bash scripts/backfill-posts-gsi.sh
+```
+
+If an earlier deploy created a broken GSI named **`PostsByCreationTime`** on the posts table, delete it in the AWS console (DynamoDB → table → Indexes) before redeploying, or leave it — the app uses **`PostsListByCreationTime`** only.
 - **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`, `CognitoDomainUrl` (Hosted UI base URL; “View login page” in console uses this).
 - **TechBlogApiStack**: `ApiUrl` (API Gateway base URL).
 - **TechBlogFrontendStack**: `FrontendUrl` (CloudFront URL for the UI), `WebsiteBucketName`.

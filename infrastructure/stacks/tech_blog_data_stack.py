@@ -39,8 +39,9 @@ class TechBlogDataStack(Stack):
             partition_key_name="postId",
             global_secondary_indexes=[
                 GlobalSecondaryIndexSpec(
-                    "PostsByCreationTime",
-                    "creation_time",
+                    "PostsListByCreationTime",
+                    "listPk",
+                    sort_key_name="creation_time",
                 ),
             ],
         )
