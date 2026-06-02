@@ -36,6 +36,34 @@ class UsersService:
         """Get a single user by id. Returns item dict or None."""
         return dynamodb_util.get_item(self._table, {"userId": user_id})
 
+    def has_any_users(self) -> bool:
+        """True if the users table contains at least one item."""
+        page = dynamodb_util.scan_page(self._table, limit=1)
+        return bool(page.get("items"))
+
+    def default_role_for_new_user(self) -> str:
+        """First user in the table is admin; everyone else defaults to reader."""
+        return "admin" if not self.has_any_users() else "reader"
+
+    def upsert_user(self, user_id: str, data: dict) -> dict:
+        """Create or merge a user profile. Preserves role on update; first user gets admin."""
+        existing = self.get_user(user_id)
+        if existing:
+            merged = {**existing, **data, "userId": user_id}
+            if "role" not in data:
+                merged["role"] = existing.get("role") or "reader"
+            dynamodb_util.put_item(self._table, merged)
+            LOGGER.info("Updated user %s", user_id)
+            return merged
+
+        role = (data.get("role") or "").strip().lower()
+        if role not in VALID_USER_ROLES:
+            role = self.default_role_for_new_user()
+        item = {**data, "userId": user_id, "role": role}
+        dynamodb_util.put_item(self._table, item)
+        LOGGER.info("Created user %s with role %s", user_id, role)
+        return item
+
     def update_user(self, user_id, data):
         """Merge profile fields into the existing user item (preserves role, cognitoUsername, etc.)."""
         existing = dynamodb_util.get_item(self._table, {"userId": user_id})

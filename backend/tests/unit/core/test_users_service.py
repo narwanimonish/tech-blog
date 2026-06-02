@@ -81,6 +81,34 @@ def test_update_user_missing_raises_not_found(mock_table):
     mock_table.put_item.assert_not_called()
 
 
+def test_upsert_user_creates_first_user_as_admin(mock_table):
+    mock_table.get_item.return_value = {}
+    mock_table.scan.return_value = {"Items": [], "Count": 0}
+    svc = UsersService(mock_table)
+    result = svc.upsert_user("u1", {"email": "first@example.com", "name": "First"})
+    assert result["role"] == "admin"
+    assert result["email"] == "first@example.com"
+    mock_table.put_item.assert_called_once()
+
+
+def test_upsert_user_creates_second_user_as_reader(mock_table):
+    mock_table.get_item.return_value = {}
+    mock_table.scan.return_value = {"Items": [{"userId": "existing"}], "Count": 1}
+    svc = UsersService(mock_table)
+    result = svc.upsert_user("u2", {"email": "second@example.com"})
+    assert result["role"] == "reader"
+
+
+def test_upsert_user_preserves_role_on_existing(mock_table):
+    mock_table.get_item.return_value = {
+        "Item": {"userId": "u1", "email": "a@b.com", "role": "writer", "name": "Alice"}
+    }
+    svc = UsersService(mock_table)
+    result = svc.upsert_user("u1", {"email": "new@b.com"})
+    assert result["role"] == "writer"
+    assert result["email"] == "new@b.com"
+
+
 def test_delete_user_calls_get_then_delete_item(mock_table):
     mock_table.get_item.return_value = {}
     svc = UsersService(mock_table)

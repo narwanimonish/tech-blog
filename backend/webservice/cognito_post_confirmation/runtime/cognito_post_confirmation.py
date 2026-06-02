@@ -19,6 +19,16 @@ TABLE_NAME = os.environ.get("usersStoreTable", "")
 TRIGGER_SIGNUP = "PostConfirmation_ConfirmSignUp"
 
 
+def _default_role_for_new_user(table) -> str:
+    """First user in the table is admin; subsequent sign-ups default to reader."""
+    try:
+        resp = table.scan(Limit=1, Select="COUNT")
+        return "admin" if resp.get("Count", 0) == 0 else "reader"
+    except Exception:
+        LOGGER.exception("Failed to count users for default role")
+        return "reader"
+
+
 def lambda_handler(event, context):
     if not TABLE_NAME:
         LOGGER.error("usersStoreTable not set")
@@ -39,16 +49,19 @@ def lambda_handler(event, context):
     email = attrs.get("email", "")
     name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username") or ""
 
-    item = {"userId": user_id, "email": email, "role": "reader"}
-    if cognito_username:
-        item["cognitoUsername"] = cognito_username
-    if name:
-        item["name"] = name
-
     try:
         table = boto3.resource("dynamodb").Table(TABLE_NAME)
+        item = {
+            "userId": user_id,
+            "email": email,
+            "role": _default_role_for_new_user(table),
+        }
+        if cognito_username:
+            item["cognitoUsername"] = cognito_username
+        if name:
+            item["name"] = name
         table.put_item(Item=item)
-        LOGGER.info("Created user in DynamoDB: %s", user_id)
+        LOGGER.info("Created user in DynamoDB: %s (role=%s)", user_id, item["role"])
     except Exception as e:
         LOGGER.exception("Failed to write user to DynamoDB: %s", e)
         # Do not fail the confirmation; Cognito user is already created

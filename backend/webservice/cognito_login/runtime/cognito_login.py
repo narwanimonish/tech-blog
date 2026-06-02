@@ -146,21 +146,19 @@ def _upsert_user_from_access_token(access_token, request_id):
             return
 
         pool_username = resp.get("Username") or ""
-        # Preserve existing role when upserting (get existing user first)
-        existing = SERVICE.get_user(user_id) or {}
         data = {"email": attrs.get("email", "")}
         name = attrs.get("name") or attrs.get("given_name") or attrs.get("preferred_username")
         if name:
             data["name"] = name
         if pool_username:
             data["cognitoUsername"] = pool_username
-        data["role"] = existing.get("role", "reader")
 
-        SERVICE.update_user(user_id, data)
+        user = SERVICE.upsert_user(user_id, data)
         LOGGER.info(
-            "auth_login upserted user in DynamoDB request_id=%s userId=%s",
+            "auth_login upserted user in DynamoDB request_id=%s userId=%s role=%s",
             request_id,
             user_id,
+            user.get("role"),
         )
     except Exception as e:
         LOGGER.exception("auth_login failed to upsert user request_id=%s error=%s", request_id, e)
