@@ -53,7 +53,9 @@ class DynamoDBTable(Construct):
 
         gsi_props = []
         for gsi in global_secondary_indexes or []:
-            gsi_partition = dynamodb.Attribute(name=gsi.partition_key_name, type=gsi.partition_key_type)
+            gsi_partition = dynamodb.Attribute(
+                name=gsi.partition_key_name, type=gsi.partition_key_type
+            )
             gsi_sort = None
             if gsi.sort_key_name:
                 gsi_sort = dynamodb.Attribute(name=gsi.sort_key_name, type=gsi.sort_key_type)
