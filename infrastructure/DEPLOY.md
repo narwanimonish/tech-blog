@@ -109,14 +109,9 @@ This handles the posts-table GSI two-phase migration, then deploys Auth → Lamb
 
 Switching from zip Lambdas to container images **replaces** each function. If `function_name` is set explicitly, CloudFormation cannot replace in place — deploy fails with *"Rename … and update the stack again"*.
 
-**Fix in code (both required):**
+**Fix:** new physical names with the `-img` suffix via `lambda_function_name()` (e.g. `tech-blog-auth-login-img`). Keep the **same CDK construct ids** (`AuthLogin`, `UsersApi`, …) so cross-stack exports used by `TechBlogApiStack` and `TechBlogWarmerStack` are updated in place — do **not** rename constructs to `*Img` or CloudFormation tries to delete exports still imported by other stacks.
 
-1. New physical names with `-img` suffix via `lambda_function_name()` (e.g. `tech-blog-users-api-img`).
-2. New CDK construct ids (`UsersApiImg`, `CognitoPostConfirmationImg`, …) so CloudFormation **deletes** the old zip Lambdas and **creates** new image Lambdas instead of attempting an in-place replace.
-
-Push these changes, then redeploy. The stack may be in `UPDATE_ROLLBACK_COMPLETE` — that is safe to update again.
-
-After deploy, delete orphaned zip log groups if desired (e.g. `/aws/lambda/tech-blog-cognito-post-confirmation`).
+Push and redeploy. `UPDATE_ROLLBACK_COMPLETE` is safe to update again.
 
 ### Legacy: SharedLayer export errors
 

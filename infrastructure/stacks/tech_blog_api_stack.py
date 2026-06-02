@@ -41,7 +41,7 @@ class TechBlogApiStack(Stack):
         # Authorizer Lambda in this stack (avoids circular dependency with Lambda stack)
         authorizer_lambda = LambdaFunction(
             self,
-            "AuthorizerImg",
+            "Authorizer",
             function_name=lambda_function_name(app_name, "api-authorizer"),
             service_name="authorizer",
             handler="runtime.authorizer.lambda_handler",

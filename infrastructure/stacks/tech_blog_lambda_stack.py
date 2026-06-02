@@ -53,7 +53,7 @@ class TechBlogLambdaStack(Stack):
         # Users Lambda – single handler for all users routes (GET /users, GET/PUT/DELETE /users/{userId})
         self.users_api = LambdaFunction(
             self,
-            "UsersApiImg",
+            "UsersApi",
             function_name=lambda_function_name(app_name, "users-api"),
             service_name="users",
             handler="runtime.users.lambda_handler",
@@ -66,7 +66,7 @@ class TechBlogLambdaStack(Stack):
         # Posts Lambda – single handler for all posts routes (GET/POST /posts, GET/PUT/DELETE /posts/{postId})
         self.posts_api = LambdaFunction(
             self,
-            "PostsApiImg",
+            "PostsApi",
             function_name=lambda_function_name(app_name, "posts-api"),
             service_name="posts",
             handler="runtime.posts.lambda_handler",
@@ -79,7 +79,7 @@ class TechBlogLambdaStack(Stack):
         # Auth login (public)
         self.auth_login = LambdaFunction(
             self,
-            "AuthLoginImg",
+            "AuthLogin",
             function_name=lambda_function_name(app_name, "auth-login"),
             service_name="cognito_login",
             handler="runtime.cognito_login.lambda_handler",

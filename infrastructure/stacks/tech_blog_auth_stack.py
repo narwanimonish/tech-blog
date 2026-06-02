@@ -42,10 +42,10 @@ class TechBlogAuthStack(Stack):
         post_conf_cfg = get_lambda_settings("cognito_post_confirmation")
         post_auth_cfg = get_lambda_settings("cognito_post_authentication")
 
-        # Post-confirmation Lambda (container image; new construct id avoids zip→image replace deadlock)
+        # Post-confirmation Lambda: write new Cognito user to DynamoDB users table
         cognito_post_confirmation = LambdaFunction(
             self,
-            "CognitoPostConfirmationImg",
+            "CognitoPostConfirmation",
             function_name=lambda_function_name(app_name, "cognito-post-confirmation"),
             service_name="cognito_post_confirmation",
             handler="runtime.cognito_post_confirmation.lambda_handler",
@@ -64,7 +64,7 @@ class TechBlogAuthStack(Stack):
         # Cognito does not provide JWT/refresh tokens to trigger events.
         cognito_post_authentication = LambdaFunction(
             self,
-            "CognitoPostAuthenticationImg",
+            "CognitoPostAuthentication",
             function_name=lambda_function_name(app_name, "cognito-post-authentication"),
             service_name="cognito_post_authentication",
             handler="runtime.cognito_post_authentication.lambda_handler",
