@@ -39,6 +39,10 @@ echo "=== TechBlogDataStack phase 2: add PostsListByCreationTime GSI ==="
 deploy_data_stack enabled
 
 echo "=== TechBlogAuthStack ==="
+# Remove orphaned image-based Cognito triggers from failed zip→image migration attempts.
+for fn in tech-blog-cognito-post-confirmation-img tech-blog-cognito-post-authentication-img; do
+  aws lambda delete-function --function-name "$fn" 2>/dev/null || true
+done
 "${CDK[@]}" TechBlogAuthStack
 
 echo "=== TechBlogLambdaStack (container images) ==="

@@ -107,11 +107,16 @@ This handles the posts-table GSI two-phase migration, then deploys Auth → Lamb
 
 ### Zip → container image migration (custom function names)
 
-Switching from zip Lambdas to container images **replaces** each function. If `function_name` is set explicitly, CloudFormation cannot replace in place — deploy fails with *"Rename … and update the stack again"*.
+App Lambdas (users, posts, auth login, authorizer) deploy as **container images** with `-img` physical names via `lambda_function_name()`. Keep the **same CDK construct ids** (`AuthLogin`, `UsersApi`, …) so cross-stack exports used by `TechBlogApiStack` and `TechBlogWarmerStack` update in place.
 
-**Fix:** new physical names with the `-img` suffix via `lambda_function_name()` (e.g. `tech-blog-auth-login-img`). Keep the **same CDK construct ids** (`AuthLogin`, `UsersApi`, …) so cross-stack exports used by `TechBlogApiStack` and `TechBlogWarmerStack` are updated in place — do **not** rename constructs to `*Img` or CloudFormation tries to delete exports still imported by other stacks.
+**Cognito trigger Lambdas** (`TechBlogAuthStack`) stay **zip-packaged** — they only use boto3 and never needed the shared layer. Do not migrate them to images; that avoids zip→image replace errors and Early Validation name conflicts.
 
-Push and redeploy. `UPDATE_ROLLBACK_COMPLETE` is safe to update again.
+If a previous failed deploy left orphaned `*-img` Cognito functions in the account, delete them before redeploying Auth:
+
+```bash
+aws lambda delete-function --function-name tech-blog-cognito-post-confirmation-img 2>/dev/null || true
+aws lambda delete-function --function-name tech-blog-cognito-post-authentication-img 2>/dev/null || true
+```
 
 ### Legacy: SharedLayer export errors
 

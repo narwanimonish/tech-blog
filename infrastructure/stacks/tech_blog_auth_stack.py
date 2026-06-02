@@ -14,7 +14,7 @@ from aws_cdk import CfnOutput, Stack, aws_cognito as cognito
 from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs import Construct
-from lambda_config import get_lambda_settings, lambda_function_name
+from lambda_config import get_lambda_settings
 from services.cognito_auth import CognitoAuth
 from services.lambda_function import LambdaFunction
 from stacks.tech_blog_data_stack import TechBlogDataStack
@@ -42,13 +42,14 @@ class TechBlogAuthStack(Stack):
         post_conf_cfg = get_lambda_settings("cognito_post_confirmation")
         post_auth_cfg = get_lambda_settings("cognito_post_authentication")
 
-        # Post-confirmation Lambda: write new Cognito user to DynamoDB users table
+        # Cognito triggers stay zip-packaged (boto3-only; no shared common/core layer).
         cognito_post_confirmation = LambdaFunction(
             self,
             "CognitoPostConfirmation",
-            function_name=lambda_function_name(app_name, "cognito-post-confirmation"),
+            function_name=f"{app_name}-cognito-post-confirmation",
             service_name="cognito_post_confirmation",
             handler="runtime.cognito_post_confirmation.lambda_handler",
+            packaging="zip",
             timeout_seconds=post_conf_cfg["timeout_seconds"],
             memory_size=post_conf_cfg["memory_size"],
             reserved_concurrent_executions=post_conf_cfg["reserved_concurrent_executions"],
@@ -60,14 +61,13 @@ class TechBlogAuthStack(Stack):
             cognito_post_confirmation.function,
         )
 
-        # Post-authentication Lambda: audit successful logins.
-        # Cognito does not provide JWT/refresh tokens to trigger events.
         cognito_post_authentication = LambdaFunction(
             self,
             "CognitoPostAuthentication",
-            function_name=lambda_function_name(app_name, "cognito-post-authentication"),
+            function_name=f"{app_name}-cognito-post-authentication",
             service_name="cognito_post_authentication",
             handler="runtime.cognito_post_authentication.lambda_handler",
+            packaging="zip",
             timeout_seconds=post_auth_cfg["timeout_seconds"],
             memory_size=post_auth_cfg["memory_size"],
             reserved_concurrent_executions=post_auth_cfg["reserved_concurrent_executions"],
