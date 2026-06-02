@@ -153,24 +153,23 @@ The **live** API stack in AWS still imports the old Lambda exports. You must upd
 
 - **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack). Posts table includes GSI **`PostsListByCreationTime`** (`listPk`, `creation_time`) for scalable list queries.
 
-### Posts GSI backfill (existing data)
+### Posts GSI migration and backfill
 
-After deploying the GSI, new posts get `listPk=POST` automatically. **Older posts** created before this change must be backfilled once or they will not appear in `GET /posts`:
+DynamoDB allows **only one GSI create or delete per table update**. Deploy uses a two-phase Data stack update in `scripts/cdk-deploy-ordered.sh`:
 
-```bash
-POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py --dry-run
-POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py
-```
+1. `CDK_POSTS_GSI=disabled` — remove any GSI from the CloudFormation template  
+2. `scripts/migrate-posts-gsi.sh` — delete orphan indexes on the live table (`PostsByCreationTime`, etc.)  
+3. `CDK_POSTS_GSI=enabled` — add **`PostsListByCreationTime`** (`listPk`, `creation_time`)  
+4. `scripts/backfill-posts-gsi.sh` — set `listPk=POST` on existing post items  
 
-Replace the table name with your `PostsTableName` stack output.
-
-This runs automatically at the end of **`bash scripts/cdk-deploy-ordered.sh`** (including CI deploy jobs). Manual run:
+Manual backfill:
 
 ```bash
 bash scripts/backfill-posts-gsi.sh
+# or
+POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py
 ```
 
-If an earlier deploy created a broken GSI named **`PostsByCreationTime`** on the posts table, delete it in the AWS console (DynamoDB → table → Indexes) before redeploying, or leave it — the app uses **`PostsListByCreationTime`** only.
 - **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`, `CognitoDomainUrl` (Hosted UI base URL; “View login page” in console uses this).
 - **TechBlogApiStack**: `ApiUrl` (API Gateway base URL).
 - **TechBlogFrontendStack**: `FrontendUrl` (CloudFront URL for the UI), `WebsiteBucketName`.

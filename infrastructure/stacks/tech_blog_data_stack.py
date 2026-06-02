@@ -1,7 +1,12 @@
 """
 DynamoDB tables for tech-blog. No dependencies.
 Deploy first: cdk deploy TechBlogDataStack
+
+Posts GSI migration: set CDK_POSTS_GSI=disabled to omit the GSI (one CFN delete per deploy),
+then CDK_POSTS_GSI=enabled to add PostsListByCreationTime (one CFN create). See scripts/cdk-deploy-ordered.sh.
 """
+
+import os
 
 from aws_cdk import CfnOutput, Stack
 
@@ -24,6 +29,7 @@ class TechBlogDataStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
         app_name = config.APP_NAME
         env = config.ENV
+        posts_gsi_enabled = os.environ.get("CDK_POSTS_GSI", "enabled").strip().lower() == "enabled"
 
         # Include ENV in table names to avoid conflict with existing tables (e.g. from old stack)
         self.users_table = DynamoDBTable(
@@ -32,18 +38,22 @@ class TechBlogDataStack(Stack):
             table_name=f"{app_name}-{env}-users",
             partition_key_name="userId",
         )
-        self.posts_table = DynamoDBTable(
-            self,
-            "PostsTable",
-            table_name=f"{app_name}-{env}-posts",
-            partition_key_name="postId",
-            global_secondary_indexes=[
+        posts_gsi: list[GlobalSecondaryIndexSpec] | None = None
+        if posts_gsi_enabled:
+            posts_gsi = [
                 GlobalSecondaryIndexSpec(
                     "PostsListByCreationTime",
                     "listPk",
                     sort_key_name="creation_time",
                 ),
-            ],
+            ]
+
+        self.posts_table = DynamoDBTable(
+            self,
+            "PostsTable",
+            table_name=f"{app_name}-{env}-posts",
+            partition_key_name="postId",
+            global_secondary_indexes=posts_gsi,
         )
 
         CfnOutput(

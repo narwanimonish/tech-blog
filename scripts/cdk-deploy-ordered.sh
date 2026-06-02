@@ -90,8 +90,24 @@ ensure_no_shared_layer_imports() {
   echo "OK: SharedLayer export has no importers."
 }
 
-echo "=== TechBlogDataStack, TechBlogAuthStack ==="
-"${CDK[@]}" TechBlogDataStack TechBlogAuthStack
+deploy_data_stack() {
+  local gsi_mode="$1"
+  echo "=== TechBlogDataStack (CDK_POSTS_GSI=${gsi_mode}) ==="
+  CDK_POSTS_GSI="$gsi_mode" "${CDK[@]}" TechBlogDataStack
+  wait_for_stack TechBlogDataStack
+}
+
+echo "=== TechBlogDataStack phase 1: drop posts GSI from stack template (if any) ==="
+deploy_data_stack disabled
+
+echo "=== Migrate posts table GSIs (remove orphan indexes on table) ==="
+bash "${ROOT}/scripts/migrate-posts-gsi.sh"
+
+echo "=== TechBlogDataStack phase 2: add PostsListByCreationTime GSI ==="
+deploy_data_stack enabled
+
+echo "=== TechBlogAuthStack ==="
+"${CDK[@]}" TechBlogAuthStack
 
 if ! aws cloudformation describe-stacks --stack-name TechBlogLambdaStack >/dev/null 2>&1; then
   echo "=== Greenfield: TechBlogLambdaStack ==="
