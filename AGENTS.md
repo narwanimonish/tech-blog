@@ -6,3 +6,4 @@
 - **Pytest:** run from repository root (`make test` or see `backend/tests/README.md`)
 - **Postman / Newman (smoke + performance):** `postman/README.md`
 - **CI/CD (production pipeline):** `docs/CI_CD.md`
+- **CDK deploy (ordered stacks, container-image Lambdas):** `infrastructure/DEPLOY.md` and `scripts/cdk-deploy-ordered.sh`
