@@ -40,8 +40,7 @@ class TechBlogDataStack(Stack):
             global_secondary_indexes=[
                 GlobalSecondaryIndexSpec(
                     "PostsByCreationTime",
-                    "listPk",
-                    sort_key_name="creation_time",
+                    "creation_time",
                 ),
             ],
         )
