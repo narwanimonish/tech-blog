@@ -1,5 +1,5 @@
 """
-Lambdas: shared layer + unified users/posts handlers + auth login.
+Lambdas: unified users/posts handlers + auth login (container images).
 Uses backend/config.json for timeout, memory_size, reserved_concurrency per function.
 Requires TechBlogDataStack (table names + IAM grants).
 Deploy after Data: cdk deploy TechBlogLambdaStack
@@ -15,7 +15,6 @@ from constructs import Construct
 from lambda_config import get_lambda_settings
 from services.dynamodb_table import DynamoDBTable
 from services.lambda_function import LambdaFunction
-from services.shared_layer import SharedLayer
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
 
@@ -37,14 +36,6 @@ class TechBlogLambdaStack(Stack):
         users_table: DynamoDBTable = data_stack.users_table
         posts_table: DynamoDBTable = data_stack.posts_table
 
-        # Shared layer (common + core)
-        shared_layer = SharedLayer(
-            self,
-            "SharedLayer",
-            asset_path="../backend/layer_bundle",
-        )
-        layer = shared_layer.get_layer()
-
         users_env = {
             "usersStoreTable": users_table.table.table_name,
             "USER_POOL_ID": auth_stack.user_pool.user_pool_id,
@@ -64,9 +55,8 @@ class TechBlogLambdaStack(Stack):
             self,
             "UsersApi",
             function_name=f"{app_name}-users-api",
-            entry_path="../backend/webservice/users",
+            service_name="users",
             handler="runtime.users.lambda_handler",
-            layers=[layer],
             environment=users_env,
             timeout_seconds=u_cfg["timeout_seconds"],
             memory_size=u_cfg["memory_size"],
@@ -78,9 +68,8 @@ class TechBlogLambdaStack(Stack):
             self,
             "PostsApi",
             function_name=f"{app_name}-posts-api",
-            entry_path="../backend/webservice/posts",
+            service_name="posts",
             handler="runtime.posts.lambda_handler",
-            layers=[layer],
             environment=posts_env,
             timeout_seconds=p_cfg["timeout_seconds"],
             memory_size=p_cfg["memory_size"],
@@ -92,9 +81,8 @@ class TechBlogLambdaStack(Stack):
             self,
             "AuthLogin",
             function_name=f"{app_name}-auth-login",
-            entry_path="../backend/webservice/cognito_login",
+            service_name="cognito_login",
             handler="runtime.cognito_login.lambda_handler",
-            layers=[layer],
             timeout_seconds=auth_cfg["timeout_seconds"],
             memory_size=auth_cfg["memory_size"],
             reserved_concurrent_executions=auth_cfg["reserved_concurrent_executions"],

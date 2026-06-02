@@ -8,7 +8,7 @@ Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (
 |-------|----------|
 | **TechBlogDataStack** | DynamoDB tables (users, posts). Deploy first. |
 | **TechBlogAuthStack** | Cognito User Pool + App Client + Hosted UI domain + Post-confirmation Lambda (populates users table). Depends on Data. |
-| **TechBlogLambdaStack** | Shared layer + unified users/posts Lambdas + auth login (legacy per-route Lambdas kept until API stack is updated). Depends on Data and Auth. |
+| **TechBlogLambdaStack** | Unified users/posts/auth-login Lambdas (container images). Depends on Data and Auth. |
 | **TechBlogApiStack** | API Gateway, custom Lambda authorizer, all routes. Depends on Lambda. |
 | **TechBlogFrontendStack** | React SPA on S3 + CloudFront (`ui/dist`). Depends on API (for `config.json` ApiUrl). |
 
@@ -43,16 +43,14 @@ cdk deploy --all
 
 Or pass them inline: `AWS_ACCOUNT_ID=123456789012 AWS_REGION=us-east-1 cdk deploy --all`
 
-## 1. Build backend layer
+## 1. Prerequisites for Lambda container images
 
-From repo root:
+Lambdas deploy as **container images** built from `backend/Dockerfile.lambda`. CDK runs `docker build` during `cdk synth` / `cdk deploy`.
 
-```bash
-cd backend
-python build.py
-```
+- Docker installed and running (Docker Desktop on macOS/Windows; Docker Engine on Linux)
+- On Apple Silicon, CDK builds for `linux/amd64` automatically
 
-Creates `backend/layer_bundle/python/{common,core}` for the Lambda layer.
+Optional legacy zip/layer workflow: `python backend/build.py` (not required for deploy).
 
 ## 1b. Build frontend
 
@@ -89,7 +87,7 @@ cdk deploy TechBlogLambdaStack
 cdk deploy TechBlogApiStack
 ```
 
-CDK will respect dependencies (Data → Auth → Lambda → Api → Frontend infra). Approve IAM changes when prompted.
+CDK will respect dependencies (Data → Auth → Lambda → Api → Frontend infra). Approve IAM changes when prompted. Docker builds one image per Lambda function on first deploy.
 
 Upload the built UI to S3 and invalidate CloudFront:
 
@@ -97,34 +95,19 @@ Upload the built UI to S3 and invalidate CloudFront:
 make ui-deploy
 ```
 
-### If Lambda stack fails: "Cannot update/delete export ... as it is in use by TechBlogApiStack"
+### Deploy order script
 
-The **live** API stack still imports a CloudFormation export from the Lambda stack (historically the shared `SharedLayer` export). Lambda cannot publish a new layer version until that import is removed.
-
-**Fix (code is already in place):** the authorizer layer is built inside `TechBlogApiStack`, not imported from `TechBlogLambdaStack`.
-
-**Unblock (run this first if Lambda fails with the export error):**
+CI and local full deploys use:
 
 ```bash
-bash scripts/drop-shared-layer-import.sh
+bash scripts/cdk-deploy-ordered.sh
 ```
 
-That deploys **only** `TechBlogApiStack` (`--exclusively --force`), waits for completion, and verifies `list-imports` is empty before you touch Lambda.
+This handles the posts-table GSI two-phase migration, then deploys Auth → Lambda → Api → Warmer/Frontend, and runs the posts GSI backfill.
 
-**Full deploy order (also enforced by `scripts/cdk-deploy-ordered.sh`):**
+### Legacy: SharedLayer export errors
 
-```bash
-python backend/build.py
-cd infrastructure
-# --exclusively is required: otherwise CDK deploys TechBlogLambdaStack first (dependency)
-# and hits the SharedLayer export lock before Api can drop the import.
-npx cdk deploy TechBlogApiStack --require-approval never --exclusively --force
-npx cdk deploy TechBlogLambdaStack --require-approval never --exclusively
-npx cdk deploy TechBlogWarmerStack TechBlogFrontendStack --require-approval never --exclusively
-npx cdk deploy TechBlogApiStack --require-approval never --exclusively
-```
-
-CI uses `bash scripts/cdk-deploy-ordered.sh`, which deploys Api **exclusively** first and **aborts before Lambda** if `list-imports` still shows an importer for the SharedLayer export.
+If upgrading from an older deployment that used Lambda **layers**, you may see CloudFormation export errors for `SharedLayer`. Run `bash scripts/drop-shared-layer-import.sh` once, then redeploy. New deployments use container images only.
 
 ### If Lambda stack fails: "Cannot delete export ... as it is in use by TechBlogApiStack" (legacy Lambdas)
 

@@ -15,7 +15,6 @@ from constructs import Construct
 from lambda_config import get_lambda_settings
 from services.lambda_function import LambdaFunction
 from services.rest_api_gateway import RestApiGateway
-from services.shared_layer import SharedLayer
 from stacks.tech_blog_auth_stack import TechBlogAuthStack
 from stacks.tech_blog_data_stack import TechBlogDataStack
 from stacks.tech_blog_lambda_stack import TechBlogLambdaStack
@@ -39,24 +38,14 @@ class TechBlogApiStack(Stack):
         auth_cfg = get_lambda_settings("authorizer")
         users_table = data_stack.users_table
 
-        # Own layer in this stack (same asset as Lambda stack) — avoids CloudFormation
-        # export lock when TechBlogLambdaStack publishes a new LayerVersion.
-        # Construct id AuthorizerLayer (not SharedLayer) so migration clearly replaces
-        # the old Fn::ImportValue from TechBlogLambdaStack.
-        authorizer_layer = SharedLayer(
-            self,
-            "AuthorizerLayer",
-            asset_path="../backend/layer_bundle",
-        ).get_layer()
-
         # Authorizer Lambda in this stack (avoids circular dependency with Lambda stack)
         authorizer_lambda = LambdaFunction(
             self,
             "Authorizer",
             function_name=f"{app_name}-api-authorizer",
-            entry_path="../backend/webservice/authorizer",
+            service_name="authorizer",
             handler="runtime.authorizer.lambda_handler",
-            layers=[authorizer_layer],
+            install_authorizer_deps=True,
             timeout_seconds=auth_cfg["timeout_seconds"],
             memory_size=auth_cfg["memory_size"],
             reserved_concurrent_executions=auth_cfg["reserved_concurrent_executions"],

@@ -1,25 +1,20 @@
 #!/usr/bin/env python3
 """
-Build script: creates the Lambda Layer bundle (common + core) so Lambdas
-don't need a copy inside each webservice folder. Run from backend/.
+Optional legacy build script for zip+layer experiments.
+
+Production deploy uses Lambda container images (backend/Dockerfile.lambda); CDK
+builds images via Docker and does not require this script.
 
   python build.py
   CYTHONIZE=1 python build.py    # compile common/core to native extensions (Lambda Linux)
 
-Output: backend/layer_bundle/ with python/common and python/core.
-Lambda Layer mounts this at /opt, so "from common import ..." and
-"from core...." work in every function that has the layer attached.
+When run, creates backend/layer_bundle/python/{common,core} and strips duplicate
+common/core copies from webservice/*.
 
-Also removes any existing common/ and core/ from webservice/* so each
-Lambda asset contains only the handler (runtime/).
+Authorizer-only pip deps (PyJWT) are installed into webservice/authorizer/ for
+the legacy zip authorizer bundle.
 
-Authorizer-only pip deps (PyJWT) are installed into webservice/authorizer/
-using manylinux2014_x86_64 wheels for AWS Lambda Python 3.12.
-
-Cython notes:
-- Set CYTHONIZE=1 to compile shared logic to .so for faster cold-start imports.
-- Requires Linux Python 3.12 (matches Lambda) or Docker (public.ecr.aws/lambda/python:3.12).
-- Unit tests always run against backend/common and backend/core sources, not the layer.
+Unit tests always run against backend/common and backend/core sources.
 """
 
 from __future__ import annotations

@@ -54,7 +54,7 @@ auth_stack = TechBlogAuthStack(
 )
 auth_stack.add_dependency(data_stack)
 
-# 3. Lambdas (layer, authorizer, handlers) – depends on Data
+# 3. Lambdas (container images) – depends on Data
 lambda_stack = TechBlogLambdaStack(
     app,
     "TechBlogLambdaStack",

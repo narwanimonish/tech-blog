@@ -128,21 +128,17 @@ Config files (in `common/rbac_config/`, included in the Lambda layer):
 
 ---
 
-## Build
+## Build & deploy
 
-Common and core live **once** in a Lambda Layer; they are not copied into each webservice folder.
+Lambdas deploy as **container images** built from `backend/Dockerfile.lambda` (common + core + handler in one image). CDK runs `docker build` during `cdk synth` / `cdk deploy` — Docker must be running.
 
-From `backend/`:
+From repo root:
 
 ```bash
-# 1. Build the layer (creates layer_bundle/python/{common,core})
-python build.py
-
-# 2. Deploy (from infrastructure/) – layer is attached to every Lambda
-cd ../infrastructure && cdk deploy
+cd infrastructure && cdk deploy
 ```
 
-Each Lambda’s asset is only `webservice/<name>/` (just `runtime/`). The layer supplies `common` and `core` at runtime. For local runs, set `PYTHONPATH` to include `backend/common` and `backend/core` (or the `layer_bundle/python` directory).
+For local handler runs and unit tests, set `PYTHONPATH=backend` (tests already do this). Optional legacy layer bundle: `python backend/build.py`.
 
 ---
 

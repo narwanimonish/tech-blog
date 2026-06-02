@@ -1,0 +1,24 @@
+# Shared Lambda container image for tech-blog handlers.
+# Build context: backend/ (see infrastructure/services/lambda_function.py).
+#
+# CDK sets the handler via DockerImageCode cmd=[...] per function.
+# Build args:
+#   SERVICE                 - webservice subfolder (users, posts, authorizer, ...)
+#   INSTALL_AUTHORIZER_DEPS - "true" to pip install PyJWT for the authorizer
+
+FROM public.ecr.aws/lambda/python:3.12
+
+ARG SERVICE
+ARG INSTALL_AUTHORIZER_DEPS=false
+
+COPY common/ ${LAMBDA_TASK_ROOT}/common/
+COPY core/ ${LAMBDA_TASK_ROOT}/core/
+COPY webservice/${SERVICE}/ ${LAMBDA_TASK_ROOT}/
+
+COPY webservice/authorizer/requirements.txt /tmp/authorizer-requirements.txt
+RUN if [ "$INSTALL_AUTHORIZER_DEPS" = "true" ]; then \
+      pip install --no-cache-dir -r /tmp/authorizer-requirements.txt -t "${LAMBDA_TASK_ROOT}"; \
+    fi
+
+# Overridden at deploy time by CDK DockerImageCode cmd=[...]
+CMD [ "runtime.handler" ]

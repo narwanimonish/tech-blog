@@ -1,0 +1,11 @@
+layer_bundle/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+tests/
+.git/
+.gitignore
+*.md
+requirements-build.txt
+setup_layer_cython.py

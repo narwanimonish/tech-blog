@@ -130,13 +130,6 @@ jobs:
       - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
-      - name: Build Lambda layer bundle (Cython)
-        env:
-          CYTHONIZE: "1"
-        run: |
-          python -m pip install -r backend/requirements-build.txt
-          python backend/build.py
-
       - name: CDK synth
         working-directory: infrastructure
         run: npx --yes aws-cdk@2.114.1 synth --quiet
@@ -184,13 +177,6 @@ jobs:
       - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
-      - name: Build Lambda layer bundle (Cython)
-        env:
-          CYTHONIZE: "1"
-        run: |
-          python -m pip install -r backend/requirements-build.txt
-          python backend/build.py
-
       - name: Build frontend
         run: |
           cd ui
@@ -203,14 +189,6 @@ jobs:
       - name: Print stack events on failure
         if: failure()
         run: |
-          echo "=== SharedLayer export / import status ==="
-          EXPORT=$(aws cloudformation list-exports \
-            --query "Exports[?starts_with(Name, 'TechBlogLambdaStack:') && contains(Name, 'SharedLayer')].Name | [0]" \
-            --output text 2>/dev/null || echo "None")
-          echo "Export: ${EXPORT}"
-          if [[ -n "${EXPORT}" && "${EXPORT}" != "None" ]]; then
-            aws cloudformation list-imports --export-name "${EXPORT}" --output table || true
-          fi
           for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
             echo "=== Failed events for $stack ==="
             aws cloudformation describe-stack-events \
@@ -318,13 +296,6 @@ jobs:
       - name: Install CDK dependencies
         run: python -m pip install -r infrastructure/requirements.txt
 
-      - name: Build Lambda layer bundle (Cython)
-        env:
-          CYTHONIZE: "1"
-        run: |
-          python -m pip install -r backend/requirements-build.txt
-          python backend/build.py
-
       - name: Build frontend
         run: |
           cd ui
@@ -337,14 +308,6 @@ jobs:
       - name: Print stack events on failure
         if: failure()
         run: |
-          echo "=== SharedLayer export / import status ==="
-          EXPORT=$(aws cloudformation list-exports \
-            --query "Exports[?starts_with(Name, 'TechBlogLambdaStack:') && contains(Name, 'SharedLayer')].Name | [0]" \
-            --output text 2>/dev/null || echo "None")
-          echo "Export: ${EXPORT}"
-          if [[ -n "${EXPORT}" && "${EXPORT}" != "None" ]]; then
-            aws cloudformation list-imports --export-name "${EXPORT}" --output table || true
-          fi
           for stack in TechBlogLambdaStack TechBlogApiStack TechBlogWarmerStack; do
             echo "=== Failed events for $stack ==="
             aws cloudformation describe-stack-events \
