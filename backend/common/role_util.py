@@ -257,25 +257,45 @@ def _role_has_permission(role_permissions: dict, required_permission: str) -> bo
     return required_permission.strip().lower() in effective
 
 
-def get_user_role(user_id: str, users_table_name: str) -> str:
-    """Look up user in DynamoDB users table; return role field or default_role."""
+def _get_user_item(user_id: str, users_table_name: str) -> dict:
+    """Load role and email for a user from DynamoDB."""
     if not users_table_name or not user_id:
-        return _get_role_permissions_config()[1]
+        return {}
     try:
         resp = _users_table(users_table_name).get_item(
             Key={"userId": user_id},
-            ProjectionExpression="#role",
+            ProjectionExpression="#role, email",
             ExpressionAttributeNames={"#role": "role"},
         )
-        item = resp.get("Item") or {}
-        role = (item.get("role") or "").strip().lower()
-        roles, default = _get_role_permissions_config()
-        if role in roles:
-            return role
-        return default
+        return resp.get("Item") or {}
     except Exception as e:
-        LOGGER.exception("Failed to get user role for %s: %s", user_id, e)
-        return _get_role_permissions_config()[1]
+        LOGGER.exception("Failed to get user %s: %s", user_id, e)
+        return {}
+
+
+def get_user_role(user_id: str, users_table_name: str) -> str:
+    """Look up user in DynamoDB users table; return role field or default_role."""
+    role, _email = get_user_role_and_email(user_id, users_table_name)
+    return role
+
+
+def get_user_email(user_id: str, users_table_name: str) -> str:
+    """Look up user email in DynamoDB users table."""
+    _role, email = get_user_role_and_email(user_id, users_table_name)
+    return email
+
+
+def get_user_role_and_email(user_id: str, users_table_name: str) -> tuple[str, str]:
+    """Look up user role and email in DynamoDB users table."""
+    roles, default = _get_role_permissions_config()
+    if not users_table_name or not user_id:
+        return default, ""
+    item = _get_user_item(user_id, users_table_name)
+    email = (item.get("email") or "").strip()
+    role = (item.get("role") or "").strip().lower()
+    if role in roles:
+        return role, email
+    return default, email
 
 
 # Backward-compatible alias for tests and internal callers.

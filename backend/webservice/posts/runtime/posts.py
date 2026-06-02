@@ -25,9 +25,20 @@ SERVICE = PostsService(TABLE)
 
 
 def _creator_email(event):
-    """Extract creator email from authorizer context (set by custom Lambda authorizer)."""
+    """Extract creator email from authorizer context or users table fallback."""
     authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
-    return authorizer.get("email") or ""
+    email = (authorizer.get("email") or "").strip()
+    if email:
+        return email
+    for key in ("username", "cognitoUsername"):
+        candidate = (authorizer.get(key) or "").strip()
+        if "@" in candidate:
+            return candidate
+    sub = authorizer.get("sub") or authorizer.get("principalId") or ""
+    users_table = os.environ.get("usersStoreTable", "")
+    if sub and users_table:
+        return role_util.get_user_email(sub, users_table)
+    return ""
 
 
 def lambda_handler(event, context):

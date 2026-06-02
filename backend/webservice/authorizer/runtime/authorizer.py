@@ -46,10 +46,13 @@ def lambda_handler(event, context):
 
         ctx = cognito_jwt_util.claims_to_authorizer_context(claims)
         if USERS_TABLE:
-            ctx["role"] = role_cache.get_cached_role(
+            role, email = role_cache.get_cached_user_profile(
                 principal_id,
-                lambda: role_util.get_user_role(principal_id, USERS_TABLE),
+                lambda: role_util.get_user_role_and_email(principal_id, USERS_TABLE),
             )
+            ctx["role"] = role
+            if not ctx.get("email") and email:
+                ctx["email"] = email
         return _allow(event, principal_id, ctx)
     except jwt.ExpiredSignatureError:
         return _deny(event, "Unauthorized", "Invalid or expired token")

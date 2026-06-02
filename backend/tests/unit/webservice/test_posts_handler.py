@@ -113,6 +113,33 @@ def test_post_posts_returns_200_and_calls_create_with_creator_email(mock_context
     assert call_args[1]["created_by"] == "author@example.com"
 
 
+def test_post_posts_resolves_creator_email_from_users_table_when_missing_in_authorizer(
+    mock_context, mock_service
+):
+    mock_service.create_post.return_value = {
+        "postId": "pid-123",
+        "title": "Hi",
+        "body": "World",
+        "created_by": "author@example.com",
+    }
+    event = api_event(
+        "POST",
+        "/posts",
+        body={"title": "Hi", "body": "World"},
+        authorizer={"sub": "u1", "role": "writer"},
+    )
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.dict(posts_module.os.environ, {"usersStoreTable": "users-table"}):
+            with patch.object(
+                posts_module.role_util, "get_user_email", return_value="author@example.com"
+            ) as get_email:
+                with patch("runtime.posts.SERVICE", mock_service):
+                    resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 200
+    get_email.assert_called_once_with("u1", "users-table")
+    assert mock_service.create_post.call_args[1]["created_by"] == "author@example.com"
+
+
 def test_put_post_returns_200(mock_context, mock_service):
     mock_service.update_post.return_value = {
         "postId": "p1",
