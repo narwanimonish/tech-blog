@@ -5,6 +5,8 @@ Accepts a boto3 DynamoDB Table resource (e.g. dynamodb_resource.Table(name)).
 
 import logging
 
+from boto3.dynamodb.conditions import Key
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -89,4 +91,38 @@ def scan_page(table, *, limit: int, exclusive_start_key: dict | None = None) -> 
         }
     except Exception as e:
         LOGGER.exception("dynamodb_util.scan_page failed: %s", e)
+        raise
+
+
+def query_page(
+    table,
+    *,
+    index_name: str,
+    partition_key_name: str,
+    partition_key_value: str,
+    limit: int,
+    exclusive_start_key: dict | None = None,
+    scan_index_forward: bool = False,
+) -> dict:
+    """
+    Query one page from a table or GSI.
+
+    :return: {"items": [...], "last_evaluated_key": dict | None}
+    """
+    try:
+        kwargs: dict = {
+            "IndexName": index_name,
+            "KeyConditionExpression": Key(partition_key_name).eq(partition_key_value),
+            "Limit": limit,
+            "ScanIndexForward": scan_index_forward,
+        }
+        if exclusive_start_key:
+            kwargs["ExclusiveStartKey"] = exclusive_start_key
+        response = table.query(**kwargs)
+        return {
+            "items": response.get("Items", []),
+            "last_evaluated_key": response.get("LastEvaluatedKey"),
+        }
+    except Exception as e:
+        LOGGER.exception("dynamodb_util.query_page failed: %s", e)
         raise

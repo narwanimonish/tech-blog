@@ -8,7 +8,7 @@ from aws_cdk import CfnOutput, Stack
 from config.dev import DevConfig
 from config.prod import ProdConfig
 from constructs import Construct
-from services.dynamodb_table import DynamoDBTable
+from services.dynamodb_table import DynamoDBTable, GlobalSecondaryIndexSpec
 
 
 class TechBlogDataStack(Stack):
@@ -37,6 +37,13 @@ class TechBlogDataStack(Stack):
             "PostsTable",
             table_name=f"{app_name}-{env}-posts",
             partition_key_name="postId",
+            global_secondary_indexes=[
+                GlobalSecondaryIndexSpec(
+                    "PostsByCreationTime",
+                    "listPk",
+                    sort_key_name="creation_time",
+                ),
+            ],
         )
 
         CfnOutput(

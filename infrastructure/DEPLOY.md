@@ -151,7 +151,18 @@ The **live** API stack in AWS still imports the old Lambda exports. You must upd
 
 ## 4. Stack outputs
 
-- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack).
+- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack). Posts table includes GSI **`PostsByCreationTime`** (`listPk`, `creation_time`) for scalable list queries.
+
+### Posts GSI backfill (existing data)
+
+After deploying the GSI, new posts get `listPk=POST` automatically. **Older posts** created before this change must be backfilled once or they will not appear in `GET /posts`:
+
+```bash
+POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py --dry-run
+POSTS_TABLE=tech-blog-dev-posts python3 backend/scripts/backfill_posts_gsi.py
+```
+
+Replace the table name with your `PostsTableName` stack output.
 - **TechBlogAuthStack**: `UserPoolId`, `UserPoolClientId`, `CognitoDomainUrl` (Hosted UI base URL; “View login page” in console uses this).
 - **TechBlogApiStack**: `ApiUrl` (API Gateway base URL).
 - **TechBlogFrontendStack**: `FrontendUrl` (CloudFront URL for the UI), `WebsiteBucketName`.

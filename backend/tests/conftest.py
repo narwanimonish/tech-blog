@@ -27,6 +27,7 @@ def mock_table():
     table = MagicMock()
     table.get_item.return_value = {"Item": None}
     table.scan.return_value = {"Items": [], "LastEvaluatedKey": None}
+    table.query.return_value = {"Items": [], "LastEvaluatedKey": None}
     table.put_item.return_value = {}
     table.delete_item.return_value = {}
     return table

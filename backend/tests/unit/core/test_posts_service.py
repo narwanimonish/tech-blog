@@ -19,6 +19,7 @@ def test_create_post_sets_post_id_and_metadata(mock_table):
     mock_table.put_item.assert_called_once()
     call_item = mock_table.put_item.call_args[1]["Item"]
     assert call_item["created_by"] == "author@example.com"
+    assert call_item["listPk"] == "POST"
     assert "creation_time" in call_item
 
 
@@ -77,15 +78,24 @@ def test_delete_post_calls_delete_item(mock_table):
     mock_table.delete_item.assert_called_once_with(Key={"postId": "p1"})
 
 
-def test_list_posts_returns_scan_result(mock_table):
-    mock_table.scan.return_value = {
-        "Items": [{"postId": "p1"}],
-        "LastEvaluatedKey": {"postId": "p1"},
+def test_list_posts_queries_gsi_newest_first(mock_table):
+    mock_table.query.return_value = {
+        "Items": [{"postId": "p1", "creation_time": "2026-01-02T00:00:00+00:00"}],
+        "LastEvaluatedKey": {"postId": "p1", "listPk": "POST", "creation_time": "2026-01-02T00:00:00+00:00"},
     }
     svc = PostsService(mock_table)
-    page = svc.list_posts(limit=10)
+    page = svc.list_posts(limit=10, start_key={"postId": "p0", "listPk": "POST"})
     assert page == {
-        "items": [{"postId": "p1"}],
-        "last_evaluated_key": {"postId": "p1"},
+        "items": [{"postId": "p1", "creation_time": "2026-01-02T00:00:00+00:00"}],
+        "last_evaluated_key": {
+            "postId": "p1",
+            "listPk": "POST",
+            "creation_time": "2026-01-02T00:00:00+00:00",
+        },
     }
-    mock_table.scan.assert_called_once_with(Limit=10)
+    mock_table.query.assert_called_once()
+    kwargs = mock_table.query.call_args[1]
+    assert kwargs["IndexName"] == "PostsByCreationTime"
+    assert kwargs["Limit"] == 10
+    assert kwargs["ScanIndexForward"] is False
+    assert kwargs["ExclusiveStartKey"] == {"postId": "p0", "listPk": "POST"}
