@@ -113,9 +113,7 @@ def test_post_posts_returns_200_and_calls_create_with_creator_email(mock_context
     assert call_args[1]["created_by"] == "author@example.com"
 
 
-def test_post_posts_resolves_creator_email_from_users_table_when_missing_in_authorizer(
-    mock_context, mock_service
-):
+def test_post_posts_resolves_creator_email_from_users_table_when_missing_in_authorizer(mock_context, mock_service):
     mock_service.create_post.return_value = {
         "postId": "pid-123",
         "title": "Hi",
@@ -130,9 +128,7 @@ def test_post_posts_resolves_creator_email_from_users_table_when_missing_in_auth
     )
     with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch.dict(posts_module.os.environ, {"usersStoreTable": "users-table"}):
-            with patch.object(
-                posts_module.role_util, "get_user_email", return_value="author@example.com"
-            ) as get_email:
+            with patch.object(posts_module.role_util, "get_user_email", return_value="author@example.com") as get_email:
                 with patch("runtime.posts.SERVICE", mock_service):
                     resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
