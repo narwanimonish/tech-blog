@@ -1,63 +1,47 @@
 # Tech Blog – CDK Infrastructure
 
-Five stacks: **TechBlogDataStack** (DynamoDB), **TechBlogAuthStack** (Cognito), **TechBlogLambdaStack** (Lambdas + IAM + env), **TechBlogApiStack** (API Gateway + custom Lambda authorizer), **TechBlogFrontendStack** (React UI on S3 + CloudFront). See **[DEPLOY.md](DEPLOY.md)** for deploy order and API usage.
+Five stacks: **TechBlogDataStack** (DynamoDB), **TechBlogAuthStack** (Cognito + zip trigger Lambdas), **TechBlogLambdaStack** (container-image API Lambdas), **TechBlogApiStack** (API Gateway + authorizer), **TechBlogFrontendStack** (React UI on S3 + CloudFront).
 
-Build the UI before `cdk deploy --all`: from repo root run `make ui-build` (or `cd ui && npm ci && npm run build`).
+See **[DEPLOY.md](DEPLOY.md)** for deploy order, Docker prerequisites, and API usage.
 
-# Welcome to your CDK Python project!
+## Prerequisites
 
-This is a blank project for CDK development with Python.
+- AWS CLI configured
+- Python 3.12+ and `pip install -r requirements.txt`
+- **Docker** running (CDK builds Lambda **container images** from `../backend/Dockerfile.lambda`)
+- CDK bootstrapped: `cdk bootstrap`
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Build the UI before frontend deploy: from repo root run `make ui-build`.
 
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
+## Deploy
 
-To manually create a virtualenv on MacOS and Linux:
+Recommended (handles GSI migration and stack order):
 
-```
-$ python3 -m venv .venv
+```bash
+bash scripts/cdk-deploy-ordered.sh
 ```
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+Or deploy stacks individually — see [DEPLOY.md](DEPLOY.md).
 
-```
-$ source .venv/bin/activate
-```
+## Lambda packaging
 
-If you are a Windows platform, you would activate the virtualenv like this:
+| Construct | Location | Packaging |
+|-----------|----------|-----------|
+| `LambdaFunction` | `services/lambda_function.py` | Default: **container image** via `DockerImageCode.from_image_asset` |
+| Cognito triggers | `stacks/tech_blog_auth_stack.py` | **Zip** (`packaging="zip"`) — no shared image needed |
 
-```
-% .venv\Scripts\activate.bat
-```
+Images are built from `backend/Dockerfile.lambda` with build arg `SERVICE=<webservice folder>`. Handler is set per function (e.g. `runtime.users.lambda_handler`). Authorizer images also install PyJWT (`install_authorizer_deps=True`).
 
-Once the virtualenv is activated, you can install the required dependencies.
-
-```
-$ pip install -r requirements.txt
-```
-
-At this point you can now synthesize the CloudFormation template for this code.
-
-```
-$ cdk synth
-```
-
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
+You do **not** need `python backend/build.py` before deploy (legacy layer workflow only).
 
 ## Useful commands
 
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy --all` deploy all stacks (run `python build.py` from backend/ first)
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+```bash
+cd infrastructure
+cdk ls              # list stacks
+cdk synth           # synthesize (runs docker build for Lambda images)
+cdk deploy --all    # deploy all stacks (prefer cdk-deploy-ordered.sh)
+cdk diff
+```
 
-Enjoy!
+From repo root: `make cdk-synth`, `make test`.

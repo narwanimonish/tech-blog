@@ -3,46 +3,59 @@
 ## Prerequisites
 
 - Python 3.12+
+- **Docker** (running) — required for CDK to build Lambda **container images**
 - AWS CLI configured (for deploy)
 - CDK CLI (for deploy)
 
-## Why a Lambda Layer?
+## How Lambdas are packaged
 
-`common` and `core` are **not** copied into each webservice folder. They are built once into `layer_bundle/` and deployed as a **Lambda Layer**. Every Lambda has the layer attached, so they all see the same `common` and `core` at runtime. No duplicate code per function.
+App handlers (`users`, `posts`, `cognito_login`, `authorizer`) deploy as **container images** built from `backend/Dockerfile.lambda`. Each image bundles:
+
+- `common/` and `core/` (shared code and RBAC JSON)
+- One `webservice/<service>/` handler folder
+- Optional pip deps (authorizer: PyJWT)
+
+CDK sets the handler per function via `cmd` (e.g. `runtime.users.lambda_handler`). Cognito trigger Lambdas in **TechBlogAuthStack** stay **zip-packaged** (boto3-only; no shared layer).
+
+You do **not** run `build.py` before deploy. CDK runs `docker build` during `cdk synth` / `cdk deploy`.
 
 ## Local development
 
-1. From `backend/`, build the layer (creates `layer_bundle/python/{common,core}`):
+Unit tests and local imports use source trees directly:
 
-   ```bash
-   python build.py
-   ```
+```bash
+# from repo root
+export PYTHONPATH=backend
+python -m pytest backend/tests -v
+```
 
-2. To run a handler locally, set `PYTHONPATH` so Python can find `common` and `core`, e.g.:
+To invoke a handler locally, include `backend`, `backend/common`, `backend/core`, and the handler directory on `PYTHONPATH`, or use `PYTHONPATH=backend` and import from `webservice.<name>.runtime`.
 
-   ```bash
-   export PYTHONPATH="backend/layer_bundle/python:backend/webservice/posts_get"
-   python -c "from runtime.posts_get import lambda_handler; ..."
-   ```
+Optional legacy zip/layer experiment (not used in production deploy):
 
-   Or point `PYTHONPATH` at `backend/common` and `backend/core` (and ensure `backend/webservice/<name>` is on the path for the handler).
+```bash
+python backend/build.py   # writes backend/layer_bundle/ — not required for CDK
+```
 
 ## Deploy
 
-1. From `backend/`, build the layer:
+From repo root (see `infrastructure/DEPLOY.md` for full order):
 
-   ```bash
-   python build.py
-   ```
+```bash
+bash scripts/cdk-deploy-ordered.sh
+```
 
-2. From `infrastructure/`, deploy. The stack attaches the shared layer to each Lambda; each function’s asset is only `webservice/<name>/` (handler code).
+Or from `infrastructure/`:
 
-   ```bash
-   cdk deploy
-   ```
+```bash
+cdk deploy TechBlogDataStack
+cdk deploy TechBlogAuthStack
+cdk deploy TechBlogLambdaStack
+cdk deploy TechBlogApiStack
+```
 
-Each Lambda’s `handler` is `runtime.<name>.lambda_handler` (e.g. `runtime.posts_get.lambda_handler`).
+Each image-based Lambda’s handler is `runtime.<module>.lambda_handler` (e.g. `runtime.posts.lambda_handler`).
 
 ## Config
 
-- **config.json** – Per-Lambda settings (timeout, memory, reserved concurrency). Used by your CDK/infra when creating the functions.
+- **config.json** – Per-Lambda settings (timeout, memory, reserved concurrency). Read by CDK when creating functions.

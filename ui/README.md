@@ -49,6 +49,8 @@ Role-based UI:
 
 ## Production (CloudFront)
 
+Backend API Lambdas deploy as **container images** (`backend/Dockerfile.lambda`); CDK needs **Docker** during `cdk deploy`. See [infrastructure/DEPLOY.md](../infrastructure/DEPLOY.md).
+
 CDK provisions **S3 + CloudFront** (`TechBlogFrontendStack`). Static files are uploaded **after** `cdk deploy`:
 
 ```bash

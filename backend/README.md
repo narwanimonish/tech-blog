@@ -9,18 +9,18 @@
 ```
 backend/
 ├── README.md                 # This file – structure and modules
-├── SETUP.md                  # Setup, run, deploy
+├── SETUP.md                  # Setup, run, deploy (container images)
+├── Dockerfile.lambda         # Shared Lambda container image recipe (CDK builds per function)
 ├── api-spec.yaml             # OpenAPI 3.0 spec – paths, schemas, security (single source of truth)
 ├── config.json               # Lambda config (timeout, memory, concurrency) – read by CDK on deploy
-├── build.py                  # Build script – creates layer_bundle for Lambda Layer
+├── build.py                  # Optional legacy script (layer_bundle); not required for deploy
 ├── db/
 │   └── migration/
 ├── scripts/
 │   └── data/
-├── common/                   # Shared utilities (DynamoDB, API response)
+├── common/                   # Shared utilities (DynamoDB, API response, RBAC)
 ├── core/                     # Domain services (posts, users)
-├── layer_bundle/             # Build output: python/common, python/core (for Lambda Layer)
-└── webservice/               # Lambda handlers only (runtime/); common + core via Layer
+└── webservice/               # Lambda handlers (runtime/); bundled into container images or zip
 ```
 
 ---
@@ -46,21 +46,14 @@ Each module follows this pattern (where applicable):
 └── (optional) src/main/       # If needed later
 ```
 
-**webservice** (one folder per Lambda; each contains only the handler):
+**webservice** (one folder per Lambda; unified API handlers + auth):
 
 ```
 webservice/
-├── posts_get/
-├── posts_list/
-├── posts_post/
-├── posts_put/
-├── posts_delete/
-├── users_get/
-├── users_list/
-├── users_put/
-├── users_delete/
-├── authorizer/
-├── cognito_login/
+├── users/                    # GET/PUT/DELETE /users, /users/{userId}, /users/{userId}/role
+├── posts/                    # GET/POST/PUT/DELETE /posts, /posts/{postId}
+├── authorizer/               # API Gateway custom authorizer (PyJWT)
+├── cognito_login/            # POST /auth/login
 ├── cognito_post_authentication/
 └── cognito_post_confirmation/
 ```
@@ -79,9 +72,11 @@ webservice/
 - `core.users` — `service` (UsersService)
 
 ### webservice
-- Per-route lambdas: `posts_get`, `posts_list`, `posts_post`, `posts_put`, `posts_delete`, `users_get`, `users_list`, `users_put`, `users_delete`.
-- Auth-related: `authorizer`, `cognito_login`, `cognito_post_authentication`, `cognito_post_confirmation`.
-- Each has a **handler** in `runtime/<name>.py` that parses the event, validates input, calls **core** services, and returns an API response via **common**.
+- **users** — unified handler for all `/users` routes.
+- **posts** — unified handler for all `/posts` routes.
+- **authorizer**, **cognito_login** — container images (see `Dockerfile.lambda`).
+- **cognito_post_*** — Cognito triggers (zip in Auth stack; boto3 only).
+- Each handler lives in `runtime/<name>.py`, parses the API Gateway event, validates input, calls **core** services, and returns responses via **common**.
 
 ---
 
@@ -97,8 +92,8 @@ webservice/
 | Posts service  | `core/posts/service.py` |
 | Users service  | `core/users/service.py` |
 | Handlers       | `webservice/<name>/runtime/<name>.py` |
-| Layer bundle   | `build.py` → `layer_bundle/python/{common,core}` (Lambda Layer; no copy per handler) |
-| RBAC config    | `common/rbac_config/*.json` (service levels, API permissions, role→permissions) |
+| Container image | `Dockerfile.lambda` — `common` + `core` + one `webservice/<name>/` per function |
+| RBAC config    | `common/rbac_config/*.json` (bundled in container images) |
 
 ---
 
@@ -116,11 +111,11 @@ Three access levels (aligned with service-level permissions):
 - **writer** — `users.view`, `posts.manage` (can create/update/delete posts).
 - **reader** — `users.view`, `posts.view` (read-only).
 
-User **role** is stored in the DynamoDB **users** table (`role` field). New users get `reader` by default (set in post-confirmation and preserved on login upsert). **Admins** change roles through the API: **`PUT /users/{userId}/role`** with body `{"role":"admin"|"writer"|"reader"}` (requires **users.fullaccess**). The generic **`PUT /users/{userId}`** profile update **ignores** a `role` field if present; use the role endpoint only for role changes.
+User **role** is stored in the DynamoDB **users** table (`role` field). The **first user** in the table (sign-up or first successful login) gets **`admin`**; later users default to **`reader`**. Admins change roles via **`PUT /users/{userId}/role`**. Profile **`PUT /users/{userId}`** ignores `role` in the body.
 
 **Flow:** Before handling a request, the users and posts handlers call `role_util.is_user_action_valid(event)`. That looks up the user’s role from the users table, resolves the required permission for the API path/method from `consolidated_api_permissions.json`, and checks the role’s permissions from `role_permissions.json` (with hierarchy: fullaccess ≥ manage ≥ view). If the check fails, the handler returns **403 Forbidden** with `errorCode: FORBIDDEN`.
 
-Config files (in `common/rbac_config/`, included in the Lambda layer):
+Config files (in `common/rbac_config/`, shipped inside each container image):
 
 - **service_level_permissions.json** — Defines services (users, posts) and their actions per level.
 - **consolidated_api_permissions.json** — Maps API path + method to required permission(s).
@@ -130,15 +125,21 @@ Config files (in `common/rbac_config/`, included in the Lambda layer):
 
 ## Build & deploy
 
-Lambdas deploy as **container images** built from `backend/Dockerfile.lambda` (common + core + handler in one image). CDK runs `docker build` during `cdk synth` / `cdk deploy` — Docker must be running.
+Lambdas deploy as **container images** from `backend/Dockerfile.lambda`. Each image includes `common/`, `core/`, and one handler under `webservice/`. CDK runs `docker build` during `cdk synth` / `cdk deploy` — **Docker must be running**.
+
+| Function | Packaging | Stack |
+|----------|-----------|--------|
+| `users_api`, `posts_api`, `auth_login` | Container image | TechBlogLambdaStack |
+| `api-authorizer` | Container image (+ PyJWT) | TechBlogApiStack |
+| Cognito post-confirmation / post-authentication | Zip | TechBlogAuthStack |
 
 From repo root:
 
 ```bash
-cd infrastructure && cdk deploy
+bash scripts/cdk-deploy-ordered.sh
 ```
 
-For local handler runs and unit tests, set `PYTHONPATH=backend` (tests already do this). Optional legacy layer bundle: `python backend/build.py`.
+For local tests: `PYTHONPATH=backend make test`. Optional legacy layer bundle (not used in deploy): `python backend/build.py`.
 
 ---
 

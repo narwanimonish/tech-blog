@@ -1,4 +1,4 @@
-# Deploy Tech Blog (four stacks)
+# Deploy Tech Blog (five stacks)
 
 Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (not the built-in Cognito authorizer) that validates the Cognito Access Token via `GetUser`.
 
@@ -16,6 +16,7 @@ Deployment is split into four stacks. Auth uses a **custom Lambda authorizer** (
 
 - AWS CLI configured (`aws configure`)
 - Python 3.12+
+- **Docker** running (required to build Lambda container images)
 - CDK bootstrapped (`cdk bootstrap`)
 
 ### "Unable to resolve AWS account to use"

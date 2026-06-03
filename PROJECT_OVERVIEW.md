@@ -26,12 +26,12 @@ A **serverless blog backend** on AWS: REST API (API Gateway) + Lambda (Python 3.
 
 | Area | Path | Notes |
 |------|------|--------|
-| Backend | `backend/` | Lambdas, shared layer, core services, common utils |
+| Backend | `backend/` | Lambdas (container images), core services, common utils |
 | Infra | `infrastructure/` | CDK (Python), stacks + constructs |
 | Docs | Root + `backend/README.md`, `infrastructure/DEPLOY.md` | Feature list, API guide, deploy order |
 
-**Backend:** `webservice/` (Lambda handlers), `core/` (UsersService, PostsService), `common/` (dynamodb_util, simple_api_util, errors, error_mapper), `layer_bundle/` (built from common + core).  
-**Infrastructure:** Four stacks – Data (DynamoDB) → Auth (Cognito + triggers) → Lambda (layer + handlers) → API (Gateway + authorizer). Config in `infrastructure/config/` (base, dev, prod).
+**Backend:** `webservice/` (Lambda handlers), `core/` (UsersService, PostsService), `common/` (dynamodb_util, simple_api_util, errors, error_mapper). App Lambdas bundle `common` + `core` + handler code via **`Dockerfile.lambda`** (container images).  
+**Infrastructure:** Stacks – Data (DynamoDB) → Auth (Cognito + zip trigger Lambdas) → Lambda (container-image API handlers) → API (Gateway + authorizer) → Frontend (S3 + CloudFront). Config in `infrastructure/config/` (base, dev, prod).
 
 ---
 
@@ -104,6 +104,7 @@ Prioritized by impact and effort.
 | API spec (OpenAPI 3.0) | `backend/api-spec.yaml` |
 | API samples (Postman-style) | `backend/README.md` |
 | Lambda config (timeout, memory, concurrency) | `backend/config.json` (read by `infrastructure/lambda_config.py`) |
+| Lambda container image recipe | `backend/Dockerfile.lambda` (CDK `DockerImageCode.from_image_asset`) |
 | Error codes / mapping | `backend/common/error_mapper.py`, `simple_api_util.py` |
 | Users CRUD | `backend/core/users/service.py`, `backend/webservice/users/runtime/users.py` |
 | Posts CRUD + creation_time/created_by | `backend/core/posts/service.py`, `backend/webservice/posts/runtime/posts.py` |
