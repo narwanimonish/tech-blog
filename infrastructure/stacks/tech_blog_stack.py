@@ -5,6 +5,7 @@ Run `python build.py` from backend/ before deploy.
 """
 
 from aws_cdk import CfnOutput, Stack, aws_apigateway as apigw
+from services.shared_layer import SharedLayer
 
 from config.dev import DevConfig
 from config.prod import ProdConfig
@@ -13,7 +14,6 @@ from services.cognito_auth import CognitoAuth
 from services.dynamodb_table import DynamoDBTable
 from services.lambda_function import LambdaFunction
 from services.rest_api_gateway import RestApiGateway
-from services.shared_layer import SharedLayer
 
 
 class TechBlogStack(Stack):
