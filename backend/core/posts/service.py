@@ -1,6 +1,14 @@
 """
 Posts domain service: CRUD for posts. Uses common.dynamodb_util.
 Expects table with partition key postId and GSI PostsListByCreationTime (listPk, creation_time).
+The service is responsible for the business logic of the posts domain.
+It is not responsible for the API endpoints or the database operations.
+It is not responsible for the authentication and authorization.
+It is not responsible for the logging.
+It is not responsible for the error handling.
+It is not responsible for the configuration.
+It is not responsible for the initialization.
+It is not responsible for the shutdown.
 """
 
 import logging
