@@ -9,7 +9,8 @@ import logging
 import os
 
 import jwt
-from common import cognito_jwt_util, role_cache, role_util, warmup_util
+from common import cognito_jwt_util, role_cache, role_util
+from common.lambda_decorators import authorizer_handler
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
@@ -20,11 +21,9 @@ CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID", "").strip()
 USERS_TABLE = os.environ.get("usersStoreTable", "")
 
 
+@authorizer_handler()
 def lambda_handler(event, context):
     """Validate token and return API Gateway policy."""
-    if warmup_util.is_warmup_event(event):
-        return warmup_util.authorizer_warmup_response()
-
     token = _get_token(event)
     if not token:
         return _deny(event, "Unauthorized", "Missing or invalid Authorization")

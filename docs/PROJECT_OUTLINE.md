@@ -6,7 +6,7 @@ Checklist ordered for demos, onboarding, or summaries. Deeper RBAC detail: [IMPL
 
 ## 1. Project code structure
 
-- **`backend/common/`** – Shared runtime: DynamoDB (`dynamodb_util`), HTTP/errors (`simple_api_util`, `error_mapper`, `errors`), RBAC (`role_util`, `rbac_config/*.json`).
+- **`backend/common/`** – Shared runtime: DynamoDB (`dynamodb_util`), HTTP/errors (`simple_api_util`, `error_mapper`, `errors`), Lambda decorators (`lambda_decorators`), RBAC (`role_util`, `rbac_config/*.json`). See [DECORATORS.md](DECORATORS.md).
 - **`backend/core/`** – Domain services: `PostsService`, `UsersService`.
 - **`backend/webservice/`** – One deployable folder per Lambda; **`runtime/<handler>.py`** only in the asset zip; **`common`** and **`core`** loaded from the Lambda layer.
 - **`backend/api-spec.yaml`** – OpenAPI 3.0 (paths, schemas, security).

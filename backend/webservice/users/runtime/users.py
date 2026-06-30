@@ -13,8 +13,9 @@ import logging
 import os
 
 import boto3
-from common import pagination_util, role_util, simple_api_util, warmup_util
+from common import pagination_util, role_util, simple_api_util
 from common.errors import AppError
+from common.lambda_decorators import api_handler, require_rbac
 from core.users.service import UsersService
 
 LOGGER = logging.getLogger()
@@ -79,97 +80,88 @@ def _profile_update_payload(data: dict) -> dict:
     return payload
 
 
+@api_handler(LOGGER)
+@require_rbac(LOGGER)
 def lambda_handler(event, context):
-    if warmup_util.is_warmup_event(event):
-        return warmup_util.api_warmup_response()
-
     request_id = getattr(context, "aws_request_id", "unknown")
     method = (event.get("httpMethod") or "").upper()
     user_id = (event.get("pathParameters") or {}).get("userId")
 
-    allowed, rbac_message = role_util.is_user_action_valid(event)
-    if not allowed:
-        return simple_api_util.build_error_response("FORBIDDEN", rbac_message or "Forbidden", 403, request_id=request_id)
-
-    try:
-        if method == "GET" and not user_id:
-            try:
-                limit, start_key = pagination_util.parse_list_params(event)
-            except pagination_util.InvalidCursorError as exc:
-                return simple_api_util.build_error_response(
-                    "BAD_REQUEST",
-                    str(exc),
-                    400,
-                    request_id=request_id,
-                )
-            page = SERVICE.list_users(limit=limit, start_key=start_key)
-            body = pagination_util.build_list_response(
-                page["items"],
-                limit=limit,
-                last_evaluated_key=page.get("last_evaluated_key"),
+    if method == "GET" and not user_id:
+        try:
+            limit, start_key = pagination_util.parse_list_params(event)
+        except pagination_util.InvalidCursorError as exc:
+            return simple_api_util.build_error_response(
+                "BAD_REQUEST",
+                str(exc),
+                400,
+                request_id=request_id,
             )
-            return simple_api_util.build_response(200, body)
-
-        if method == "GET" and user_id:
-            allowed_self, self_msg = _ensure_self_or_admin(event, user_id)
-            if not allowed_self:
-                return simple_api_util.build_error_response("FORBIDDEN", self_msg, 403, request_id=request_id)
-            item = SERVICE.get_user(user_id)
-            if not item:
-                return simple_api_util.build_error_response("NOT_FOUND", "User not found", 404, request_id=request_id)
-            return simple_api_util.build_response(200, item)
-
-        if _is_put_user_role(event):
-            body = event.get("body")
-            if not body:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
-            try:
-                data = json.loads(body)
-            except json.JSONDecodeError:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            if "role" not in data:
-                return simple_api_util.build_error_response("BAD_REQUEST", "role is required", 400, request_id=request_id)
-            try:
-                updated = SERVICE.update_user_role(user_id, data["role"])
-            except AppError as err:
-                return simple_api_util.build_error_response(err.code, err.message, err.status_code, request_id=request_id)
-            return simple_api_util.build_response(200, updated)
-
-        if method == "PUT" and user_id:
-            allowed_self, self_msg = _ensure_self_or_admin(event, user_id)
-            if not allowed_self:
-                return simple_api_util.build_error_response("FORBIDDEN", self_msg, 403, request_id=request_id)
-            body = event.get("body")
-            if not body:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
-            try:
-                data = json.loads(body)
-            except json.JSONDecodeError:
-                return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
-            profile = _profile_update_payload(data)
-            if not profile:
-                return simple_api_util.build_error_response(
-                    "BAD_REQUEST",
-                    "At least one of email or name is required",
-                    400,
-                    request_id=request_id,
-                )
-            try:
-                updated = SERVICE.update_user(user_id, profile)
-            except AppError as err:
-                return simple_api_util.build_error_response(err.code, err.message, err.status_code, request_id=request_id)
-            return simple_api_util.build_response(200, updated)
-
-        if method == "DELETE" and user_id:
-            SERVICE.delete_user(user_id)
-            return simple_api_util.build_response(200, {"message": "Deleted"})
-
-        return simple_api_util.build_error_response(
-            "METHOD_NOT_ALLOWED",
-            f"Unsupported route or method: {method}",
-            405,
-            request_id=request_id,
+        page = SERVICE.list_users(limit=limit, start_key=start_key)
+        body = pagination_util.build_list_response(
+            page["items"],
+            limit=limit,
+            last_evaluated_key=page.get("last_evaluated_key"),
         )
-    except Exception as e:
-        LOGGER.exception("users handler error: %s", e)
-        return simple_api_util.build_error_from_exception(e, request_id=request_id)
+        return simple_api_util.build_response(200, body)
+
+    if method == "GET" and user_id:
+        allowed_self, self_msg = _ensure_self_or_admin(event, user_id)
+        if not allowed_self:
+            return simple_api_util.build_error_response("FORBIDDEN", self_msg, 403, request_id=request_id)
+        item = SERVICE.get_user(user_id)
+        if not item:
+            return simple_api_util.build_error_response("NOT_FOUND", "User not found", 404, request_id=request_id)
+        return simple_api_util.build_response(200, item)
+
+    if _is_put_user_role(event):
+        body = event.get("body")
+        if not body:
+            return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError:
+            return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
+        if "role" not in data:
+            return simple_api_util.build_error_response("BAD_REQUEST", "role is required", 400, request_id=request_id)
+        try:
+            updated = SERVICE.update_user_role(user_id, data["role"])
+        except AppError as err:
+            return simple_api_util.build_error_response(err.code, err.message, err.status_code, request_id=request_id)
+        return simple_api_util.build_response(200, updated)
+
+    if method == "PUT" and user_id:
+        allowed_self, self_msg = _ensure_self_or_admin(event, user_id)
+        if not allowed_self:
+            return simple_api_util.build_error_response("FORBIDDEN", self_msg, 403, request_id=request_id)
+        body = event.get("body")
+        if not body:
+            return simple_api_util.build_error_response("BAD_REQUEST", "Body required", 400, request_id=request_id)
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError:
+            return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
+        profile = _profile_update_payload(data)
+        if not profile:
+            return simple_api_util.build_error_response(
+                "BAD_REQUEST",
+                "At least one of email or name is required",
+                400,
+                request_id=request_id,
+            )
+        try:
+            updated = SERVICE.update_user(user_id, profile)
+        except AppError as err:
+            return simple_api_util.build_error_response(err.code, err.message, err.status_code, request_id=request_id)
+        return simple_api_util.build_response(200, updated)
+
+    if method == "DELETE" and user_id:
+        SERVICE.delete_user(user_id)
+        return simple_api_util.build_response(200, {"message": "Deleted"})
+
+    return simple_api_util.build_error_response(
+        "METHOD_NOT_ALLOWED",
+        f"Unsupported route or method: {method}",
+        405,
+        request_id=request_id,
+    )
