@@ -13,10 +13,11 @@ export function Layout() {
 
   return (
     <div className="app-shell">
-      <header className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
+      <header className="app-header">
         <div>
-          <h1 style={{ margin: 0 }}>Tech Blog</h1>
-          <p className="muted" style={{ margin: "4px 0 0" }}>
+          <div className="brand-mark">TB</div>
+          <h1>Tech Blog</h1>
+          <p className="muted">
             {profileLine}
           </p>
         </div>
