@@ -30,13 +30,25 @@ class TechBlogDataStack(Stack):
         app_name = config.APP_NAME
         env = config.ENV
         posts_gsi_enabled = os.environ.get("CDK_POSTS_GSI", "enabled").strip().lower() == "enabled"
+        users_gsi_enabled = os.environ.get("CDK_USERS_GSI", "enabled").strip().lower() == "enabled"
 
         # Include ENV in table names to avoid conflict with existing tables (e.g. from old stack)
+        users_gsi: list[GlobalSecondaryIndexSpec] | None = None
+        if users_gsi_enabled:
+            users_gsi = [
+                GlobalSecondaryIndexSpec(
+                    "UsersListByCreationTime",
+                    "listPk",
+                    sort_key_name="creation_time",
+                ),
+            ]
+
         self.users_table = DynamoDBTable(
             self,
             "UsersTable",
             table_name=f"{app_name}-{env}-users",
             partition_key_name="userId",
+            global_secondary_indexes=users_gsi,
         )
         posts_gsi: list[GlobalSecondaryIndexSpec] | None = None
         if posts_gsi_enabled:

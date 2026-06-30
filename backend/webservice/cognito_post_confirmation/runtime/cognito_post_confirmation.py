@@ -7,6 +7,7 @@ Uses boto3 only (no shared layer) so this Lambda can live in the Auth stack.
 
 import logging
 import os
+from datetime import datetime, timezone
 
 import boto3
 
@@ -14,6 +15,8 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ.get("usersStoreTable", "")
+USERS_LIST_PK = "listPk"
+USERS_LIST_PK_VALUE = "USER"
 
 # Only create/update users table on sign-up confirmation, not on ForgotPassword confirm
 TRIGGER_SIGNUP = "PostConfirmation_ConfirmSignUp"
@@ -55,6 +58,8 @@ def lambda_handler(event, context):
             "userId": user_id,
             "email": email,
             "role": _default_role_for_new_user(table),
+            "creation_time": datetime.now(timezone.utc).isoformat(),
+            USERS_LIST_PK: USERS_LIST_PK_VALUE,
         }
         if cognito_username:
             item["cognitoUsername"] = cognito_username

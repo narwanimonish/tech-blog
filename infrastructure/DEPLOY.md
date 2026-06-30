@@ -145,7 +145,9 @@ The **live** API stack in AWS still imports the old Lambda exports. You must upd
 
 ## 4. Stack outputs
 
-- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack). Posts table includes GSI **`PostsListByCreationTime`** (`listPk`, `creation_time`) for scalable list queries.
+- **TechBlogDataStack**: `UsersTableName`, `PostsTableName` (exported for cross-stack). Users and posts tables include list GSIs:
+  - **`UsersListByCreationTime`** (`listPk`, `creation_time`)
+  - **`PostsListByCreationTime`** (`listPk`, `creation_time`)
 
 ### Posts GSI migration and backfill
 

@@ -26,7 +26,7 @@ def test_get_user_returns_none_when_missing(mock_table):
 
 
 def test_list_users_returns_page(mock_table):
-    mock_table.scan.return_value = {
+    mock_table.query.return_value = {
         "Items": [{"userId": "u1"}, {"userId": "u2"}],
         "LastEvaluatedKey": {"userId": "u2"},
     }
@@ -36,7 +36,12 @@ def test_list_users_returns_page(mock_table):
         "items": [{"userId": "u1"}, {"userId": "u2"}],
         "last_evaluated_key": {"userId": "u2"},
     }
-    mock_table.scan.assert_called_once_with(Limit=2, ExclusiveStartKey={"userId": "u0"})
+    mock_table.query.assert_called_once()
+    kwargs = mock_table.query.call_args.kwargs
+    assert kwargs["IndexName"] == "UsersListByCreationTime"
+    assert kwargs["Limit"] == 2
+    assert kwargs["ExclusiveStartKey"] == {"userId": "u0"}
+    assert kwargs["ScanIndexForward"] is False
 
 
 def test_update_user_merges_into_existing_item(mock_table):
@@ -83,17 +88,19 @@ def test_update_user_missing_raises_not_found(mock_table):
 
 def test_upsert_user_creates_first_user_as_admin(mock_table):
     mock_table.get_item.return_value = {}
-    mock_table.scan.return_value = {"Items": [], "Count": 0}
+    mock_table.query.return_value = {"Items": []}
     svc = UsersService(mock_table)
     result = svc.upsert_user("u1", {"email": "first@example.com", "name": "First"})
     assert result["role"] == "admin"
     assert result["email"] == "first@example.com"
+    assert result["listPk"] == "USER"
+    assert result["creation_time"]
     mock_table.put_item.assert_called_once()
 
 
 def test_upsert_user_creates_second_user_as_reader(mock_table):
     mock_table.get_item.return_value = {}
-    mock_table.scan.return_value = {"Items": [{"userId": "existing"}], "Count": 1}
+    mock_table.query.return_value = {"Items": [{"userId": "existing"}]}
     svc = UsersService(mock_table)
     result = svc.upsert_user("u2", {"email": "second@example.com"})
     assert result["role"] == "reader"
@@ -105,6 +112,8 @@ def test_upsert_user_preserves_role_on_existing(mock_table):
     result = svc.upsert_user("u1", {"email": "new@b.com"})
     assert result["role"] == "writer"
     assert result["email"] == "new@b.com"
+    assert result["listPk"] == "USER"
+    assert result["creation_time"]
 
 
 def test_delete_user_calls_get_then_delete_item(mock_table):
