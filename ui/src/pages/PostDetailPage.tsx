@@ -13,7 +13,7 @@ export function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { token, canManagePosts } = useAuth();
+  const { token, canManagePosts, canManagePost } = useAuth();
   const statePost = (location.state as PostDetailLocationState | null)?.post;
   const initialPost = statePost?.postId === postId ? statePost : null;
   const [post, setPost] = useState<Post | null>(initialPost);
@@ -86,7 +86,7 @@ export function PostDetailPage() {
                 {post.created_by} · {formatDate(post.creation_time)}
               </p>
             </div>
-            {canManagePosts ? (
+            {canManagePost(post) ? (
               <div className="row">
                 <Link to={`/posts/${post.postId}/edit`} className="button-link secondary">
                   Edit

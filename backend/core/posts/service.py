@@ -48,8 +48,7 @@ class PostsService:
         if existing:
             if "creation_time" not in data:
                 data["creation_time"] = existing.get("creation_time")
-            if "created_by" not in data:
-                data["created_by"] = existing.get("created_by")
+            data["created_by"] = existing.get("created_by")
         data["postId"] = post_id
         self._with_list_index_fields(data)
         dynamodb_util.put_item(self._table, data)

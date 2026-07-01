@@ -1,14 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { formatApiError, getPost, updatePost } from "../api/client";
+import type { Post } from "../types";
 import { useAuth } from "../auth/AuthContext";
 
 export function PostEditPage() {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-  const { token, canManagePosts } = useAuth();
+  const { token, canManagePosts, canManagePost } = useAuth();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -18,9 +20,10 @@ export function PostEditPage() {
       return;
     }
     getPost(token, postId)
-      .then((post) => {
-        setTitle(post.title);
-        setBody(post.body);
+      .then((loaded) => {
+        setPost(loaded);
+        setTitle(loaded.title);
+        setBody(loaded.body);
       })
       .catch((err: unknown) => {
         setError(formatApiError(err, "Failed to load post"));
@@ -34,6 +37,10 @@ export function PostEditPage() {
 
   if (!canManagePosts) {
     return <Navigate to={postId ? `/posts/${postId}` : "/posts"} replace />;
+  }
+
+  if (post && !canManagePost(post)) {
+    return <Navigate to={`/posts/${postId}`} replace />;
   }
 
   if (!postId) {

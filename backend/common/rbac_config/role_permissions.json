@@ -8,7 +8,7 @@
     "writer": {
       "users": "view",
       "posts": "manage",
-      "description": "Can view own profile only; can create, update, delete posts."
+      "description": "Can view own profile only; can create and manage own posts only."
     },
     "reader": {
       "users": "view",

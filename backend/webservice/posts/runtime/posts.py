@@ -42,6 +42,23 @@ def _creator_email(event):
     return ""
 
 
+def _caller_is_admin(event: dict) -> bool:
+    return role_util.resolve_user_role(event) == "admin"
+
+
+def _ensure_post_owner_or_admin(event: dict, post: dict) -> tuple[bool, str]:
+    """Writers may only modify posts they created; admins may modify any post."""
+    if _caller_is_admin(event):
+        return True, ""
+    caller_email = _creator_email(event).lower()
+    if not caller_email:
+        return False, "Missing user identity (email)"
+    owner_email = (post.get("created_by") or "").strip().lower()
+    if caller_email != owner_email:
+        return False, "You can only modify your own posts"
+    return True, ""
+
+
 @api_handler(LOGGER)
 @require_rbac(LOGGER)
 def lambda_handler(event, context):
@@ -91,9 +108,22 @@ def lambda_handler(event, context):
             data = json.loads(body)
         except json.JSONDecodeError:
             return simple_api_util.build_error_response("BAD_REQUEST", "Invalid JSON", 400, request_id=request_id)
+        existing = SERVICE.get_post(post_id)
+        if not existing:
+            return simple_api_util.build_error_response("NOT_FOUND", "Post not found", 404, request_id=request_id)
+        allowed, message = _ensure_post_owner_or_admin(event, existing)
+        if not allowed:
+            return simple_api_util.build_error_response("FORBIDDEN", message, 403, request_id=request_id)
+        data.pop("created_by", None)
         return simple_api_util.build_response(200, SERVICE.update_post(post_id, data))
 
     if method == "DELETE" and post_id:
+        existing = SERVICE.get_post(post_id)
+        if not existing:
+            return simple_api_util.build_error_response("NOT_FOUND", "Post not found", 404, request_id=request_id)
+        allowed, message = _ensure_post_owner_or_admin(event, existing)
+        if not allowed:
+            return simple_api_util.build_error_response("FORBIDDEN", message, 403, request_id=request_id)
         SERVICE.delete_post(post_id)
         return simple_api_util.build_response(200, {"message": "Deleted"})
 

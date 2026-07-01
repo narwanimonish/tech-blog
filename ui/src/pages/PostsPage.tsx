@@ -7,7 +7,7 @@ import type { Post } from "../types";
 import { formatDate } from "../utils/format";
 
 export function PostsPage() {
-  const { token, canManagePosts } = useAuth();
+  const { token, canManagePosts, canManagePost } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
@@ -110,7 +110,7 @@ export function PostsPage() {
                 </div>
                 <p style={{ margin: "8px 0 0", color: "#1f2933" }}>{post.body}</p>
               </Link>
-              {canManagePosts ? (
+              {canManagePost(post) ? (
                 <div className="row">
                   <Link to={`/posts/${post.postId}/edit`} className="button-link secondary">
                     Edit

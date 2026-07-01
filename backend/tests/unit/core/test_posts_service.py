@@ -63,13 +63,13 @@ def test_update_post_preserves_creation_time_and_created_by(mock_table):
     assert call_item["created_by"] == "original@example.com"
 
 
-def test_update_post_allows_overriding_creation_fields(mock_table):
+def test_update_post_preserves_created_by_even_when_body_includes_it(mock_table):
     mock_table.get_item.return_value = {"Item": {"postId": "p1", "creation_time": "old", "created_by": "old"}}
     svc = PostsService(mock_table)
     svc.update_post("p1", {"creation_time": "new", "created_by": "new@x.com"})
     call_item = mock_table.put_item.call_args[1]["Item"]
     assert call_item["creation_time"] == "new"
-    assert call_item["created_by"] == "new@x.com"
+    assert call_item["created_by"] == "old"
 
 
 def test_delete_post_calls_delete_item(mock_table):

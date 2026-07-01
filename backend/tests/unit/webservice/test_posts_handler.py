@@ -137,6 +137,12 @@ def test_post_posts_resolves_creator_email_from_users_table_when_missing_in_auth
 
 
 def test_put_post_returns_200(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "title": "Old",
+        "body": "Old",
+        "created_by": "test@example.com",
+    }
     mock_service.update_post.return_value = {
         "postId": "p1",
         "title": "New",
@@ -150,18 +156,162 @@ def test_put_post_returns_200(mock_context, mock_service):
     )
     event["path"] = "/posts/p1"
     with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
-        with patch("runtime.posts.SERVICE", mock_service):
-            resp = posts_lambda_handler(event, mock_context)
+        with patch.object(posts_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 200
+    mock_service.get_post.assert_called_once_with("p1")
+    mock_service.update_post.assert_called_once_with("p1", {"title": "New", "body": "New"})
+
+
+def test_put_post_returns_403_when_not_owner(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "title": "Old",
+        "body": "Old",
+        "created_by": "other@example.com",
+    }
+    event = api_event(
+        "PUT",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        body={"title": "New", "body": "New"},
+        authorizer={"sub": "u1", "email": "writer@example.com"},
+    )
+    event["path"] = "/posts/p1"
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(posts_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 403
+    body = json.loads(resp["body"])
+    assert body.get("errorCode") == "FORBIDDEN"
+    mock_service.update_post.assert_not_called()
+
+
+def test_put_post_returns_200_for_admin_on_any_post(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "title": "Old",
+        "body": "Old",
+        "created_by": "other@example.com",
+    }
+    mock_service.update_post.return_value = {
+        "postId": "p1",
+        "title": "New",
+        "body": "New",
+    }
+    event = api_event(
+        "PUT",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        body={"title": "New", "body": "New"},
+        authorizer={"sub": "admin-1", "email": "admin@example.com", "role": "admin"},
+    )
+    event["path"] = "/posts/p1"
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(posts_module, "_caller_is_admin", return_value=True):
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
     mock_service.update_post.assert_called_once_with("p1", {"title": "New", "body": "New"})
 
 
-def test_delete_post_returns_200(mock_context, mock_service):
-    event = api_event("DELETE", "/posts/p1", path_params={"postId": "p1"})
+def test_put_post_strips_created_by_from_body(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "title": "Old",
+        "body": "Old",
+        "created_by": "test@example.com",
+    }
+    mock_service.update_post.return_value = {
+        "postId": "p1",
+        "title": "New",
+        "body": "New",
+        "created_by": "test@example.com",
+    }
+    event = api_event(
+        "PUT",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        body={"title": "New", "body": "New", "created_by": "hacker@example.com"},
+    )
+    event["path"] = "/posts/p1"
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(posts_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.posts.SERVICE", mock_service):
+                posts_lambda_handler(event, mock_context)
+    mock_service.update_post.assert_called_once_with("p1", {"title": "New", "body": "New"})
+
+
+def test_put_post_returns_404_when_not_found(mock_context, mock_service):
+    mock_service.get_post.return_value = None
+    event = api_event(
+        "PUT",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        body={"title": "New", "body": "New"},
+    )
     event["path"] = "/posts/p1"
     with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
         with patch("runtime.posts.SERVICE", mock_service):
             resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 404
+    mock_service.update_post.assert_not_called()
+
+
+def test_delete_post_returns_200(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "created_by": "test@example.com",
+    }
+    event = api_event("DELETE", "/posts/p1", path_params={"postId": "p1"})
+    event["path"] = "/posts/p1"
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(posts_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 200
+    mock_service.get_post.assert_called_once_with("p1")
+    mock_service.delete_post.assert_called_once_with("p1")
+
+
+def test_delete_post_returns_403_when_not_owner(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "created_by": "other@example.com",
+    }
+    event = api_event(
+        "DELETE",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        authorizer={"sub": "u1", "email": "writer@example.com"},
+    )
+    event["path"] = "/posts/p1"
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(posts_module, "_caller_is_admin", return_value=False):
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
+    assert resp["statusCode"] == 403
+    mock_service.delete_post.assert_not_called()
+
+
+def test_delete_post_returns_200_for_admin_on_any_post(mock_context, mock_service):
+    mock_service.get_post.return_value = {
+        "postId": "p1",
+        "created_by": "other@example.com",
+    }
+    event = api_event(
+        "DELETE",
+        "/posts/p1",
+        path_params={"postId": "p1"},
+        authorizer={"sub": "admin-1", "email": "admin@example.com", "role": "admin"},
+    )
+    event["path"] = "/posts/p1"
+    with patch.object(posts_module.role_util, "is_user_action_valid", return_value=(True, "")):
+        with patch.object(posts_module, "_caller_is_admin", return_value=True):
+            with patch("runtime.posts.SERVICE", mock_service):
+                resp = posts_lambda_handler(event, mock_context)
     assert resp["statusCode"] == 200
     mock_service.delete_post.assert_called_once_with("p1")
 

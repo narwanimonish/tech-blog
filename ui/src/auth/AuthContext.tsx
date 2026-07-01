@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { decodeJwtPayload, formatApiError, getUser, login as apiLogin } from "../api/client";
-import type { Role, User } from "../types";
+import type { Post, Role, User } from "../types";
 
 const TOKEN_KEY = "tech_blog_access_token";
 const EMAIL_KEY = "tech_blog_email";
@@ -59,12 +59,27 @@ interface AuthContextValue {
   refreshCurrentUser: () => Promise<void>;
   isAdmin: boolean;
   canManagePosts: boolean;
+  canManagePost: (post: Pick<Post, "created_by">) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function canManagePostsForRole(role: Role | undefined): boolean {
   return role === "admin" || role === "writer";
+}
+
+export function canManageOwnPost(
+  role: Role | undefined,
+  email: string | null,
+  post: Pick<Post, "created_by">,
+): boolean {
+  if (role === "admin") {
+    return true;
+  }
+  if (role === "writer" && email && post.created_by) {
+    return email.toLowerCase() === post.created_by.toLowerCase();
+  }
+  return false;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -148,6 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshCurrentUser,
       isAdmin: currentUser?.role === "admin",
       canManagePosts: canManagePostsForRole(currentUser?.role),
+      canManagePost: (post: Pick<Post, "created_by">) =>
+        canManageOwnPost(currentUser?.role, email, post),
     }),
     [token, email, currentUser, profileError, loading, login, logout, refreshCurrentUser],
   );
