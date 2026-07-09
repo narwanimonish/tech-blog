@@ -34,7 +34,19 @@ SERVICE = UsersService(
 
 
 def _is_put_user_role(event: dict) -> bool:
-    """True when request is PUT /users/{userId}/role (pathParameters.userId matches path segment)."""
+    """True when request is PUT /users/{userId}/role (pathParameters.userId matches path segment).
+
+    Example:
+    {
+        "httpMethod": "PUT",
+        "path": "/users/123/role",
+        "pathParameters": {
+            "userId": "123"
+        }
+    }
+    Returns True if the request is a PUT request to the /users/{userId}/role endpoint.
+    Returns False otherwise.
+    """
     if (event.get("httpMethod") or "").upper() != "PUT":
         return False
     path = (event.get("path") or "").rstrip("/") or ""
